@@ -1,0 +1,85 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "dev-project-launcher",
+  "title": "Dev Project Launcher",
+  "description": "Manage and launch your dev projects — open in PhpStorm, start DDEV/Docker Compose, open terminal, launch in browser.",
+  "icon": "extension-icon.png",
+  "author": "philipp",
+  "categories": ["Developer Tools", "Productivity"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "list-projects",
+      "title": "List Projects",
+      "subtitle": "Dev Project Launcher",
+      "description": "Browse all your dev projects and launch actions",
+      "mode": "view"
+    },
+    {
+      "name": "add-project",
+      "title": "Add Project",
+      "subtitle": "Dev Project Launcher",
+      "description": "Register a new dev project",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "phpstormPath",
+      "title": "PhpStorm CLI Path",
+      "description": "Path to the PhpStorm CLI launcher (e.g. /usr/local/bin/phpstorm or the Toolbox path)",
+      "type": "textfield",
+      "default": "/usr/local/bin/phpstorm",
+      "required": false
+    },
+    {
+      "name": "terminalApp",
+      "title": "Terminal App",
+      "description": "Which terminal to open project folders in",
+      "type": "dropdown",
+      "required": false,
+      "default": "terminal",
+      "data": [
+        { "title": "Terminal.app", "value": "terminal" },
+        { "title": "iTerm2", "value": "iterm" },
+        { "title": "Warp", "value": "warp" }
+      ]
+    },
+    {
+      "name": "ddevPath",
+      "title": "DDEV Path",
+      "description": "Path to the ddev binary",
+      "type": "textfield",
+      "default": "/usr/local/bin/ddev",
+      "required": false
+    },
+    {
+      "name": "dockerComposePath",
+      "title": "Docker Compose Path",
+      "description": "Path to the docker compose binary (v2: 'docker compose', v1: 'docker-compose')",
+      "type": "textfield",
+      "default": "/usr/local/bin/docker",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.83.0",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.x",
+    "@types/react": "19.x",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"Error: no publishing\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
