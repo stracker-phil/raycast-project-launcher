@@ -22,15 +22,18 @@ export async function openInEditor(project: Project, config: ResolvedConfig): Pr
 }
 
 /**
- * Open the project's .project-launcher.json with the system default editor.
+ * Open the project's .project-launcher.json in the configured config editor.
+ * Falls back to: configEditor pref > project editor > defaultEditor pref > "Sublime Text".
  */
-export async function openConfigFile(project: Project): Promise<void> {
+export async function openConfigFile(project: Project, config: ResolvedConfig): Promise<void> {
+  const { configEditor } = prefs();
+  const app = configEditor || config.editor || "Sublime Text";
   const path = configPath(project);
   try {
-    execSync(`open "${path}"`, { timeout: 5000 });
-    await showToast(Toast.Style.Success, "Opened config file");
+    execSync(`open -a "${app}" "${path}"`, { timeout: 5000 });
+    await showToast(Toast.Style.Success, `Opened config in ${app}`);
   } catch (error) {
-    await showToast(Toast.Style.Failure, "Failed to open config", String(error));
+    await showToast(Toast.Style.Failure, `Failed to open config in ${app}`, String(error));
   }
 }
 

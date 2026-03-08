@@ -28,6 +28,12 @@ export interface ProjectFileConfig {
   env?: Record<string, string>;
   /** Named shell commands shown as actions (e.g. { "Build": "npm run build" }) */
   scripts?: Record<string, string>;
+  /** Raycast icon name for the project list (e.g. "Code", "Globe", "Hammer") */
+  icon?: string;
+  /** Raycast tint color for the project icon (e.g. "Blue", "Green", "Orange") */
+  color?: string;
+  /** Free-form notes displayed in the project detail panel */
+  notes?: string;
 }
 
 /**
@@ -41,15 +47,66 @@ export interface ResolvedConfig {
   url?: string;
   env?: Record<string, string>;
   scripts?: Record<string, string>;
+  icon: string;
+  color: string;
+  notes?: string;
   isGitRepo: boolean;
   hasConfigFile: boolean;
 }
+
+/**
+ * Icon choices for the project list (subset of Raycast Icon enum).
+ */
+export const PROJECT_ICONS = [
+  "Folder",
+  "Code",
+  "Terminal",
+  "Globe",
+  "Hammer",
+  "Star",
+  "Heart",
+  "Bolt",
+  "Book",
+  "Box",
+  "Bug",
+  "Cog",
+  "Document",
+  "GameController",
+  "Leaf",
+  "LightBulb",
+  "Link",
+  "Lock",
+  "Monitor",
+  "Music",
+  "Pencil",
+  "Person",
+  "Phone",
+  "Rocket",
+  "Shield",
+  "Snippets",
+  "Wand",
+  "Wrench",
+] as const;
+
+/**
+ * Color choices for the project icon tint.
+ */
+export const PROJECT_COLORS = [
+  "Blue",
+  "Green",
+  "Magenta",
+  "Orange",
+  "Purple",
+  "Red",
+  "Yellow",
+] as const;
 
 /**
  * Extension-level preferences from package.json.
  */
 export interface ExtensionPreferences {
   defaultEditor: string;
+  configEditor: string;
   terminalApp: "terminal" | "iterm" | "warp";
   gitClient: string;
 }

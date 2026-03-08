@@ -1,6 +1,7 @@
 import {
   Action,
   ActionPanel,
+  Color,
   Form,
   showToast,
   Toast,
@@ -8,9 +9,9 @@ import {
   Icon,
 } from "@raycast/api";
 import { useState } from "react";
-import { Project } from "./types";
+import { Project, PROJECT_ICONS, PROJECT_COLORS } from "./types";
 import { addProject, updateProject, generateId } from "./storage";
-import { readConfig, writeConfig } from "./config";
+import { readConfig, writeConfig, resolveConfig } from "./config";
 import { openConfigFile } from "./actions";
 
 interface AddProjectProps {
@@ -35,6 +36,9 @@ export default function AddProjectCommand(props: AddProjectProps) {
     url: string;
     start: string;
     stop: string;
+    icon: string;
+    color: string;
+    notes: string;
   }) {
     if (!isEditing && (!values.path || values.path.length === 0)) {
       setPathError("Project folder is required");
@@ -57,6 +61,9 @@ export default function AddProjectCommand(props: AddProjectProps) {
       url: values.url.trim() || undefined,
       start: values.start.trim() || undefined,
       stop: values.stop.trim() || undefined,
+      icon: values.icon || "Folder",
+      color: values.color || "Blue",
+      notes: values.notes.trim() || undefined,
     });
 
     if (isEditing) {
@@ -65,7 +72,8 @@ export default function AddProjectCommand(props: AddProjectProps) {
     } else {
       await addProject(project);
       await showToast(Toast.Style.Success, "Project added");
-      await openConfigFile(project);
+      const config = resolveConfig(project);
+      await openConfigFile(project, config);
     }
 
     onSaved?.();
@@ -88,7 +96,8 @@ export default function AddProjectCommand(props: AddProjectProps) {
               icon={Icon.Document}
               shortcut={{ modifiers: ["cmd"], key: "e" }}
               onAction={async () => {
-                await openConfigFile(editProject);
+                const config = resolveConfig(editProject);
+                await openConfigFile(editProject, config);
                 onSaved?.();
                 pop();
               }}
@@ -125,6 +134,36 @@ export default function AddProjectCommand(props: AddProjectProps) {
         info="Used to group projects in the list"
       />
 
+      <Form.Dropdown
+        id="icon"
+        title="Icon"
+        defaultValue={fileConfig?.icon ?? "Folder"}
+      >
+        {PROJECT_ICONS.map((name) => (
+          <Form.Dropdown.Item
+            key={name}
+            value={name}
+            title={name}
+            icon={{ source: Icon[name as keyof typeof Icon], tintColor: Color.PrimaryText }}
+          />
+        ))}
+      </Form.Dropdown>
+
+      <Form.Dropdown
+        id="color"
+        title="Color"
+        defaultValue={fileConfig?.color ?? "Blue"}
+      >
+        {PROJECT_COLORS.map((name) => (
+          <Form.Dropdown.Item
+            key={name}
+            value={name}
+            title={name}
+            icon={{ source: Icon.CircleFilled, tintColor: Color[name as keyof typeof Color] }}
+          />
+        ))}
+      </Form.Dropdown>
+
       <Form.Separator />
 
       <Form.TextField
@@ -154,6 +193,15 @@ export default function AddProjectCommand(props: AddProjectProps) {
         title="Stop Command"
         placeholder="ddev stop"
         defaultValue={fileConfig?.stop ?? ""}
+      />
+
+      <Form.Separator />
+
+      <Form.TextArea
+        id="notes"
+        title="Notes"
+        placeholder="Free-form notes about this project…"
+        defaultValue={fileConfig?.notes ?? ""}
       />
     </Form>
   );

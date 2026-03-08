@@ -8,6 +8,7 @@ import {
   openInBrowser,
   openGitClient,
   openInFinder,
+  openConfigFile,
   runScript,
 } from "./actions";
 import AddProjectCommand from "./add-project";
@@ -120,6 +121,14 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
           }}
         />,
       ),
+  });
+
+  actions.push({
+    id: "edit-config",
+    title: "Edit Config File",
+    icon: { source: Icon.Document },
+    section: "Manage",
+    onAction: () => openConfigFile(project, config),
   });
 
   // Group by section

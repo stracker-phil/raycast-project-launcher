@@ -41,6 +41,14 @@
       "required": false
     },
     {
+      "name": "configEditor",
+      "title": "Config Editor",
+      "description": "App name to open .project-launcher.json files in (e.g. Sublime Text, VS Code). Leave empty to use the project editor.",
+      "type": "textfield",
+      "default": "",
+      "required": false
+    },
+    {
       "name": "terminalApp",
       "title": "Terminal App",
       "description": "Which terminal to open project folders in",

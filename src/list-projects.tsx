@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { Project, ResolvedConfig } from "./types";
 import { loadProjects, removeProject } from "./storage";
 import { resolveConfig } from "./config";
-import { openInEditor, openTerminal, openInBrowser, openGitClient, openInFinder, trashConfigFile } from "./actions";
+import { openInEditor, openTerminal, openInBrowser, openGitClient, openInFinder, openConfigFile, trashConfigFile } from "./actions";
 import AddProjectCommand from "./add-project";
 import ProjectActions from "./project-actions";
 
@@ -102,25 +102,80 @@ export default function ListProjectsCommand(
     }
   }
 
+  function projectDetail(config: ResolvedConfig, project: Project) {
+    return (
+      <List.Item.Detail
+        metadata={
+          <List.Item.Detail.Metadata>
+            <List.Item.Detail.Metadata.Label title="Path" text={project.path} />
+            <List.Item.Detail.Metadata.Label title="Editor" text={config.editor} />
+            {project.tag && (
+              <List.Item.Detail.Metadata.TagList title="Tag">
+                <List.Item.Detail.Metadata.TagList.Item text={project.tag} color={Color.Blue} />
+              </List.Item.Detail.Metadata.TagList>
+            )}
+            {config.isGitRepo && (
+              <List.Item.Detail.Metadata.TagList title="Git">
+                <List.Item.Detail.Metadata.TagList.Item text="Repository" color={Color.Green} />
+              </List.Item.Detail.Metadata.TagList>
+            )}
+            {config.url && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Link title="URL" text={config.url} target={config.url} />
+              </>
+            )}
+            {(config.start || config.stop) && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                {config.start && (
+                  <List.Item.Detail.Metadata.Label title="Start" text={config.start} />
+                )}
+                {config.stop && (
+                  <List.Item.Detail.Metadata.Label title="Stop" text={config.stop} />
+                )}
+              </>
+            )}
+            {config.env && Object.keys(config.env).length > 0 && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Environment" />
+                {Object.entries(config.env).map(([key, value]) => (
+                  <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
+                ))}
+              </>
+            )}
+            {config.scripts && Object.keys(config.scripts).length > 0 && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Scripts" />
+                {Object.entries(config.scripts).map(([label, cmd]) => (
+                  <List.Item.Detail.Metadata.Label key={label} title={`  ${label}`} text={cmd} />
+                ))}
+              </>
+            )}
+            {config.notes && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Notes" text={config.notes} />
+              </>
+            )}
+          </List.Item.Detail.Metadata>
+        }
+      />
+    );
+  }
+
   function projectItem({ project, config }: ProjectWithConfig) {
-    const accessories: List.Item.Accessory[] = [];
-    if (config.isGitRepo) {
-      accessories.push({ icon: Icon.CodeBlock, tooltip: "Git repo" });
-    }
-    if (config.url) {
-      accessories.push({ icon: Icon.Globe });
-    }
-    if (config.start) {
-      accessories.push({ icon: Icon.Play, tooltip: "Has services" });
-    }
+    const iconSource = Icon[config.icon as keyof typeof Icon] ?? Icon.Folder;
+    const iconColor = Color[config.color as keyof typeof Color] ?? Color.Blue;
 
     return (
       <List.Item
         key={project.id}
         title={config.name}
-        subtitle={project.path}
-        icon={{ source: Icon.Folder, tintColor: Color.Blue }}
-        accessories={accessories}
+        icon={{ source: iconSource, tintColor: iconColor }}
+        detail={projectDetail(config, project)}
         actions={
           <ActionPanel>
             <ActionPanel.Section title="Actions">
@@ -181,6 +236,12 @@ export default function ListProjectsCommand(
                   push(<AddProjectCommand editProject={project} onSaved={refresh} />)
                 }
               />
+              <Action
+                title="Edit Config File"
+                icon={Icon.Document}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "e" }}
+                onAction={() => openConfigFile(project, config)}
+              />
               <Action.CreateQuicklink
                 shortcut={{ modifiers: ["cmd"], key: "p" }}
                 quicklink={{
@@ -205,6 +266,7 @@ export default function ListProjectsCommand(
   return (
     <List
       isLoading={isLoading}
+      isShowingDetail
       searchBarPlaceholder="Search projects…"
       actions={
         <ActionPanel>

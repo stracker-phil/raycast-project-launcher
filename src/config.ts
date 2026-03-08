@@ -42,6 +42,8 @@ export function writeConfig(projectPath: string, updates: Partial<ProjectFileCon
     url: "",
     env: {},
     scripts: {},
+    icon: "Folder",
+    color: "Blue",
   };
   const merged = { ...defaults, ...updates };
   const path = join(projectPath, CONFIG_FILENAME);
@@ -67,6 +69,9 @@ export function resolveConfig(project: Project): ResolvedConfig {
     url: fileConfig?.url || undefined,
     env,
     scripts,
+    icon: fileConfig?.icon || "Folder",
+    color: fileConfig?.color || "Blue",
+    notes: fileConfig?.notes || undefined,
     isGitRepo: existsSync(join(project.path, ".git")),
     hasConfigFile: fileConfig !== null,
   };
