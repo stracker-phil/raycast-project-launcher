@@ -34,6 +34,7 @@ export default function ListProjectsCommand(
   const contextId = props.launchContext?.projectId;
   const [items, setItems] = useState<ProjectWithConfig[]>([]);
   const [directMatch, setDirectMatch] = useState<ProjectWithConfig | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
   const { push } = useNavigation();
 
@@ -71,11 +72,22 @@ export default function ListProjectsCommand(
     );
   }
 
-  // Group by tag
+  // Collect all tags for the dropdown (from unfiltered items)
+  const allTags = [...new Set(items.map((item) => item.project.tag).filter(Boolean) as string[])].sort();
+  const hasUntagged = items.some((item) => !item.project.tag);
+
+  // Filter by selected tag
+  const filteredItems = selectedTag === "all"
+    ? items
+    : selectedTag === "untagged"
+      ? items.filter((item) => !item.project.tag)
+      : items.filter((item) => item.project.tag === selectedTag);
+
+  // Group filtered items by tag
   const tagged = new Map<string, ProjectWithConfig[]>();
   const untagged: ProjectWithConfig[] = [];
 
-  for (const item of items) {
+  for (const item of filteredItems) {
     if (item.project.tag) {
       const group = tagged.get(item.project.tag) ?? [];
       group.push(item);
@@ -268,6 +280,23 @@ export default function ListProjectsCommand(
       isLoading={isLoading}
       isShowingDetail
       searchBarPlaceholder="Search projects…"
+      searchBarAccessory={
+        allTags.length > 0 ? (
+          <List.Dropdown
+            tooltip="Filter by Tag"
+            value={selectedTag}
+            onChange={setSelectedTag}
+          >
+            <List.Dropdown.Item title="All Tags" value="all" />
+            {allTags.map((tag) => (
+              <List.Dropdown.Item key={tag} title={tag} value={tag} />
+            ))}
+            {hasUntagged && (
+              <List.Dropdown.Item title="Untagged" value="untagged" />
+            )}
+          </List.Dropdown>
+        ) : undefined
+      }
       actions={
         <ActionPanel>
           <Action
