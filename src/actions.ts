@@ -1,37 +1,46 @@
-import { getPreferenceValues, showToast, Toast, open } from "@raycast/api";
+import { getPreferenceValues, showToast, Toast, open, trash } from "@raycast/api";
 import { execSync } from "child_process";
-import { ExtensionPreferences, Project } from "./types";
+import { existsSync } from "fs";
+import { ExtensionPreferences, Project, ResolvedConfig } from "./types";
+import { configPath } from "./config";
 
 function prefs(): ExtensionPreferences {
   return getPreferenceValues<ExtensionPreferences>();
 }
 
 /**
- * Open the project folder in PhpStorm.
+ * Open the project folder in the configured editor app.
  */
-export async function openInPhpStorm(project: Project): Promise<void> {
-  const { phpstormPath } = prefs();
-
+export async function openInEditor(project: Project, config: ResolvedConfig): Promise<void> {
+  const app = config.editor;
   try {
-    // Try the configured CLI path first.
-    // If that fails, fall back to the `open -a` approach.
-    try {
-      execSync(`"${phpstormPath}" "${project.path}"`, { timeout: 5000 });
-    } catch {
-      // Fallback: use macOS `open -a` with the app bundle
-      execSync(`open -a "PhpStorm" "${project.path}"`, { timeout: 5000 });
-    }
-    await showToast(Toast.Style.Success, `Opened ${project.name} in PhpStorm`);
+    execSync(`open -a "${app}" "${project.path}"`, { timeout: 5000 });
+    await showToast(Toast.Style.Success, `Opened ${config.name} in ${app}`);
   } catch (error) {
-    await showToast(Toast.Style.Failure, "Failed to open PhpStorm", String(error));
+    await showToast(Toast.Style.Failure, `Failed to open ${app}`, String(error));
   }
 }
 
 /**
- * Open the project folder in the configured terminal app.
+ * Open the project's .project-launcher.json with the system default editor.
  */
-export async function openTerminal(project: Project): Promise<void> {
+export async function openConfigFile(project: Project): Promise<void> {
+  const path = configPath(project);
+  try {
+    execSync(`open "${path}"`, { timeout: 5000 });
+    await showToast(Toast.Style.Success, "Opened config file");
+  } catch (error) {
+    await showToast(Toast.Style.Failure, "Failed to open config", String(error));
+  }
+}
+
+/**
+ * Open the project folder in the configured terminal app, with env vars if set.
+ */
+export async function openTerminal(project: Project, config: ResolvedConfig): Promise<void> {
   const { terminalApp } = prefs();
+  const envExports = buildEnvExports(config.env);
+  const cdCommand = `${envExports}cd ${escapeForShell(project.path)}`;
 
   try {
     switch (terminalApp) {
@@ -41,7 +50,7 @@ export async function openTerminal(project: Project): Promise<void> {
             activate
             set newWindow to (create window with default profile)
             tell current session of newWindow
-              write text "cd ${escapeForAppleScript(project.path)}"
+              write text "${escapeForAppleScript(cdCommand)}"
             end tell
           end tell'`,
           { timeout: 5000 },
@@ -49,7 +58,6 @@ export async function openTerminal(project: Project): Promise<void> {
         break;
 
       case "warp":
-        // Warp supports opening a folder directly
         execSync(`open -a "Warp" "${project.path}"`, { timeout: 5000 });
         break;
 
@@ -58,34 +66,45 @@ export async function openTerminal(project: Project): Promise<void> {
         execSync(
           `osascript -e 'tell application "Terminal"
             activate
-            do script "cd ${escapeForAppleScript(project.path)}"
+            do script "${escapeForAppleScript(cdCommand)}"
           end tell'`,
           { timeout: 5000 },
         );
         break;
     }
-    await showToast(Toast.Style.Success, `Opened terminal in ${project.name}`);
+    await showToast(Toast.Style.Success, `Opened terminal in ${config.name}`);
   } catch (error) {
     await showToast(Toast.Style.Failure, "Failed to open terminal", String(error));
   }
 }
 
 /**
- * Start the project's container services.
+ * Open the project in the configured git client.
  */
-export async function startServices(project: Project): Promise<void> {
-  if (project.type === "none") {
-    await showToast(Toast.Style.Failure, "No services configured for this project");
+export async function openGitClient(project: Project, config: ResolvedConfig): Promise<void> {
+  const { gitClient } = prefs();
+  try {
+    execSync(`open -a "${gitClient}" "${project.path}"`, { timeout: 5000 });
+    await showToast(Toast.Style.Success, `Opened ${config.name} in ${gitClient}`);
+  } catch (error) {
+    await showToast(Toast.Style.Failure, `Failed to open ${gitClient}`, String(error));
+  }
+}
+
+/**
+ * Start the project's services using the resolved start command.
+ */
+export async function startServices(project: Project, config: ResolvedConfig): Promise<void> {
+  if (!config.start) {
+    await showToast(Toast.Style.Failure, "No start command configured");
     return;
   }
 
-  const toast = await showToast(Toast.Style.Animated, `Starting ${project.type}…`);
-
+  const toast = await showToast(Toast.Style.Animated, `Starting services…`);
   try {
-    const cmd = buildServiceCommand(project, "start");
-    execSync(cmd, { cwd: project.path, timeout: 60000, env: shellEnv() });
+    execSync(config.start, { cwd: project.path, timeout: 60000, env: projectEnv(config) });
     toast.style = Toast.Style.Success;
-    toast.title = `${project.name} started`;
+    toast.title = `${config.name} started`;
   } catch (error) {
     toast.style = Toast.Style.Failure;
     toast.title = "Failed to start services";
@@ -94,21 +113,19 @@ export async function startServices(project: Project): Promise<void> {
 }
 
 /**
- * Stop the project's container services.
+ * Stop the project's services using the resolved stop command.
  */
-export async function stopServices(project: Project): Promise<void> {
-  if (project.type === "none") {
-    await showToast(Toast.Style.Failure, "No services configured for this project");
+export async function stopServices(project: Project, config: ResolvedConfig): Promise<void> {
+  if (!config.stop) {
+    await showToast(Toast.Style.Failure, "No stop command configured");
     return;
   }
 
-  const toast = await showToast(Toast.Style.Animated, `Stopping ${project.type}…`);
-
+  const toast = await showToast(Toast.Style.Animated, `Stopping services…`);
   try {
-    const cmd = buildServiceCommand(project, "stop");
-    execSync(cmd, { cwd: project.path, timeout: 60000, env: shellEnv() });
+    execSync(config.stop, { cwd: project.path, timeout: 60000, env: projectEnv(config) });
     toast.style = Toast.Style.Success;
-    toast.title = `${project.name} stopped`;
+    toast.title = `${config.name} stopped`;
   } catch (error) {
     toast.style = Toast.Style.Failure;
     toast.title = "Failed to stop services";
@@ -117,38 +134,59 @@ export async function stopServices(project: Project): Promise<void> {
 }
 
 /**
- * Open the project URL in the default browser.
+ * Run a named script from the project config.
  */
-export async function openInBrowser(project: Project): Promise<void> {
-  if (!project.url) {
-    await showToast(Toast.Style.Failure, "No URL configured for this project");
-    return;
+export async function runScript(
+  project: Project,
+  config: ResolvedConfig,
+  label: string,
+  command: string,
+): Promise<void> {
+  const toast = await showToast(Toast.Style.Animated, `Running ${label}…`);
+  try {
+    execSync(command, { cwd: project.path, timeout: 120000, env: projectEnv(config) });
+    toast.style = Toast.Style.Success;
+    toast.title = `${label} completed`;
+  } catch (error) {
+    toast.style = Toast.Style.Failure;
+    toast.title = `${label} failed`;
+    toast.message = String(error);
   }
-  await open(project.url);
+}
+
+/**
+ * Open a URL in the default browser.
+ */
+export async function openInBrowser(url: string): Promise<void> {
+  await open(url);
+}
+
+/**
+ * Move the project's .project-launcher.json to the trash.
+ */
+export async function trashConfigFile(project: Project): Promise<void> {
+  const path = configPath(project);
+  if (existsSync(path)) {
+    await trash(path);
+  }
+}
+
+/**
+ * Reveal the project folder in Finder.
+ */
+export async function openInFinder(project: Project): Promise<void> {
+  try {
+    execSync(`open "${project.path}"`, { timeout: 5000 });
+  } catch (error) {
+    await showToast(Toast.Style.Failure, "Failed to open Finder", String(error));
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildServiceCommand(project: Project, action: "start" | "stop"): string {
-  const { ddevPath, dockerComposePath } = prefs();
-
-  if (project.type === "ddev") {
-    return `"${ddevPath}" ${action}`;
-  }
-
-  // docker-compose
-  if (action === "start") {
-    return `"${dockerComposePath}" compose up -d`;
-  }
-  return `"${dockerComposePath}" compose down`;
-}
-
-/**
- * Build an env object that includes common paths so CLI tools are found.
- */
-function shellEnv(): NodeJS.ProcessEnv {
+function projectEnv(config: ResolvedConfig): NodeJS.ProcessEnv {
   return {
     ...process.env,
     PATH: [
@@ -160,12 +198,23 @@ function shellEnv(): NodeJS.ProcessEnv {
       "/sbin",
       process.env.PATH,
     ].join(":"),
+    ...config.env,
   };
 }
 
-/**
- * Escape a string for use inside an AppleScript string literal.
- */
+function buildEnvExports(env?: Record<string, string>): string {
+  if (!env || Object.keys(env).length === 0) return "";
+  return (
+    Object.entries(env)
+      .map(([k, v]) => `export ${k}=${escapeForShell(v)}`)
+      .join("; ") + "; "
+  );
+}
+
+function escapeForShell(str: string): string {
+  return `'${str.replace(/'/g, "'\\''")}'`;
+}
+
 function escapeForAppleScript(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

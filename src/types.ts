@@ -1,37 +1,55 @@
 /**
- * The type of container orchestration used by a project.
- * - "ddev": Uses DDEV (ddev start / ddev stop)
- * - "docker-compose": Uses Docker Compose (docker compose up / down)
- * - "none": No container services
- */
-export type ProjectType = "ddev" | "docker-compose" | "none";
-
-/**
- * A registered dev project.
+ * A registered dev project (stored in LocalStorage).
+ * Only the path and organizational metadata live here — everything else
+ * comes from .project-launcher.json in the project root.
  */
 export interface Project {
-  /** Unique identifier */
   id: string;
-  /** Display name */
-  name: string;
-  /** Absolute path to the project root */
   path: string;
-  /** Container orchestration type */
-  type: ProjectType;
-  /** URL to open in browser (e.g. https://myproject.ddev.site) */
-  url?: string;
-  /** Optional tag for grouping (e.g. "client", "hobby", "work") */
   tag?: string;
-  /** ISO timestamp of when the project was added */
   createdAt: string;
+}
+
+/**
+ * Per-project config read from .project-launcher.json in the project root.
+ */
+export interface ProjectFileConfig {
+  /** Display name (defaults to folder name) */
+  name?: string;
+  /** App name to open with (e.g. "PhpStorm", "Cursor", "Sublime Text") */
+  editor?: string;
+  /** Shell command to start services */
+  start?: string;
+  /** Shell command to stop services */
+  stop?: string;
+  /** Project URL for browser */
+  url?: string;
+  /** Env vars merged into all commands and terminal sessions */
+  env?: Record<string, string>;
+  /** Named shell commands shown as actions (e.g. { "Build": "npm run build" }) */
+  scripts?: Record<string, string>;
+}
+
+/**
+ * Resolved config for a project — merged from config file and global prefs.
+ */
+export interface ResolvedConfig {
+  name: string;
+  editor: string;
+  start?: string;
+  stop?: string;
+  url?: string;
+  env?: Record<string, string>;
+  scripts?: Record<string, string>;
+  isGitRepo: boolean;
+  hasConfigFile: boolean;
 }
 
 /**
  * Extension-level preferences from package.json.
  */
 export interface ExtensionPreferences {
-  phpstormPath: string;
+  defaultEditor: string;
   terminalApp: "terminal" | "iterm" | "warp";
-  ddevPath: string;
-  dockerComposePath: string;
+  gitClient: string;
 }

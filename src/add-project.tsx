@@ -8,8 +8,10 @@ import {
   Icon,
 } from "@raycast/api";
 import { useState } from "react";
-import { Project, ProjectType } from "./types";
+import { Project } from "./types";
 import { addProject, updateProject, generateId } from "./storage";
+import { readConfig, writeConfig } from "./config";
+import { openConfigFile } from "./actions";
 
 interface AddProjectProps {
   editProject?: Project;
@@ -21,42 +23,49 @@ export default function AddProjectCommand(props: AddProjectProps) {
   const isEditing = !!editProject;
   const { pop } = useNavigation();
 
-  const [nameError, setNameError] = useState<string | undefined>();
+  const fileConfig = isEditing ? readConfig(editProject.path) : null;
+
   const [pathError, setPathError] = useState<string | undefined>();
 
   async function handleSubmit(values: {
-    name: string;
     path: string[];
-    type: string;
-    url: string;
     tag: string;
+    name: string;
+    editor: string;
+    url: string;
+    start: string;
+    stop: string;
   }) {
-    // Validate
-    if (!values.name.trim()) {
-      setNameError("Name is required");
-      return;
-    }
-    if (!values.path || values.path.length === 0) {
+    if (!isEditing && (!values.path || values.path.length === 0)) {
       setPathError("Project folder is required");
       return;
     }
 
+    const projectPath = isEditing ? editProject.path : values.path[0];
+
     const project: Project = {
       id: editProject?.id ?? generateId(),
-      name: values.name.trim(),
-      path: values.path[0],
-      type: values.type as ProjectType,
-      url: values.url.trim() || undefined,
+      path: projectPath,
       tag: values.tag.trim() || undefined,
       createdAt: editProject?.createdAt ?? new Date().toISOString(),
     };
 
+    // Write form fields to the JSON config (works for both add and edit)
+    writeConfig(projectPath, {
+      name: values.name.trim() || undefined,
+      editor: values.editor.trim() || undefined,
+      url: values.url.trim() || undefined,
+      start: values.start.trim() || undefined,
+      stop: values.stop.trim() || undefined,
+    });
+
     if (isEditing) {
       await updateProject(project);
-      await showToast(Toast.Style.Success, `Updated ${project.name}`);
+      await showToast(Toast.Style.Success, "Project updated");
     } else {
       await addProject(project);
-      await showToast(Toast.Style.Success, `Added ${project.name}`);
+      await showToast(Toast.Style.Success, "Project added");
+      await openConfigFile(project);
     }
 
     onSaved?.();
@@ -65,7 +74,7 @@ export default function AddProjectCommand(props: AddProjectProps) {
 
   return (
     <Form
-      navigationTitle={isEditing ? `Edit ${editProject.name}` : "Add Project"}
+      navigationTitle={isEditing ? "Edit Project" : "Add Project"}
       actions={
         <ActionPanel>
           <Action.SubmitForm
@@ -73,43 +82,39 @@ export default function AddProjectCommand(props: AddProjectProps) {
             icon={Icon.Check}
             onSubmit={handleSubmit}
           />
+          {isEditing && (
+            <Action
+              title="Edit Config File"
+              icon={Icon.Document}
+              shortcut={{ modifiers: ["cmd"], key: "e" }}
+              onAction={async () => {
+                await openConfigFile(editProject);
+                onSaved?.();
+                pop();
+              }}
+            />
+          )}
         </ActionPanel>
       }
     >
+      {!isEditing && (
+        <Form.FilePicker
+          id="path"
+          title="Project Folder"
+          allowMultipleSelection={false}
+          canChooseDirectories={true}
+          canChooseFiles={false}
+          error={pathError}
+          onChange={() => pathError && setPathError(undefined)}
+        />
+      )}
+
       <Form.TextField
         id="name"
-        title="Project Name"
-        placeholder="My Awesome Project"
-        defaultValue={editProject?.name ?? ""}
-        error={nameError}
-        onChange={() => nameError && setNameError(undefined)}
-      />
-
-      <Form.FilePicker
-        id="path"
-        title="Project Folder"
-        allowMultipleSelection={false}
-        canChooseDirectories={true}
-        canChooseFiles={false}
-        defaultValue={editProject?.path ? [editProject.path] : []}
-        error={pathError}
-        onChange={() => pathError && setPathError(undefined)}
-      />
-
-      <Form.Dropdown id="type" title="Service Type" defaultValue={editProject?.type ?? "ddev"}>
-        <Form.Dropdown.Item value="ddev" title="DDEV" icon={Icon.Box} />
-        <Form.Dropdown.Item value="docker-compose" title="Docker Compose" icon={Icon.Box} />
-        <Form.Dropdown.Item value="none" title="None (plain project)" icon={Icon.Document} />
-      </Form.Dropdown>
-
-      <Form.Separator />
-
-      <Form.TextField
-        id="url"
-        title="Project URL"
-        placeholder="https://myproject.ddev.site"
-        defaultValue={editProject?.url ?? ""}
-        info="Optional — the URL to open in your browser when launching the project"
+        title="Name"
+        placeholder="My Project"
+        defaultValue={fileConfig?.name ?? ""}
+        info={isEditing ? "From .project-launcher.json" : "Set after adding via config file"}
       />
 
       <Form.TextField
@@ -117,7 +122,38 @@ export default function AddProjectCommand(props: AddProjectProps) {
         title="Tag"
         placeholder="client, hobby, work…"
         defaultValue={editProject?.tag ?? ""}
-        info="Optional — used to group projects in the list"
+        info="Used to group projects in the list"
+      />
+
+      <Form.Separator />
+
+      <Form.TextField
+        id="editor"
+        title="Editor"
+        placeholder="PhpStorm"
+        defaultValue={fileConfig?.editor ?? ""}
+        info="App name (e.g. PhpStorm, Cursor, VS Code). Leave empty for default."
+      />
+
+      <Form.TextField
+        id="url"
+        title="URL"
+        placeholder="https://myproject.ddev.site"
+        defaultValue={fileConfig?.url ?? ""}
+      />
+
+      <Form.TextField
+        id="start"
+        title="Start Command"
+        placeholder="ddev start"
+        defaultValue={fileConfig?.start ?? ""}
+      />
+
+      <Form.TextField
+        id="stop"
+        title="Stop Command"
+        placeholder="ddev stop"
+        defaultValue={fileConfig?.stop ?? ""}
       />
     </Form>
   );
