@@ -25,11 +25,19 @@
   ],
   "preferences": [
     {
-      "name": "phpstormPath",
-      "title": "PhpStorm CLI Path",
-      "description": "Path to the PhpStorm CLI launcher (e.g. /usr/local/bin/phpstorm or the Toolbox path)",
+      "name": "defaultEditor",
+      "title": "Default Editor",
+      "description": "App name to open projects in (e.g. PhpStorm, Cursor, VS Code). Can be overridden per project via .project-launcher.json",
       "type": "textfield",
-      "default": "/usr/local/bin/phpstorm",
+      "default": "PhpStorm",
+      "required": false
+    },
+    {
+      "name": "gitClient",
+      "title": "Git Client",
+      "description": "App name for the git client (e.g. Sublime Merge, Fork, Tower)",
+      "type": "textfield",
+      "default": "Sublime Merge",
       "required": false
     },
     {
@@ -44,22 +52,6 @@
         { "title": "iTerm2", "value": "iterm" },
         { "title": "Warp", "value": "warp" }
       ]
-    },
-    {
-      "name": "ddevPath",
-      "title": "DDEV Path",
-      "description": "Path to the ddev binary",
-      "type": "textfield",
-      "default": "/usr/local/bin/ddev",
-      "required": false
-    },
-    {
-      "name": "dockerComposePath",
-      "title": "Docker Compose Path",
-      "description": "Path to the docker compose binary (v2: 'docker compose', v1: 'docker-compose')",
-      "type": "textfield",
-      "default": "/usr/local/bin/docker",
-      "required": false
     }
   ],
   "dependencies": {
