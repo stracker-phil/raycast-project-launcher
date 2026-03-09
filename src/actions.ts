@@ -1,33 +1,63 @@
 import { getPreferenceValues, showToast, Toast, open, trash } from "@raycast/api";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
-import { ExtensionPreferences, Project, ResolvedConfig } from "./types";
+import { ExtensionPreferences, Project, ResolvedApp, ResolvedConfig } from "./types";
 import { configPath } from "./config";
 
 function prefs(): ExtensionPreferences {
   return getPreferenceValues<ExtensionPreferences>();
 }
 
+// ---------------------------------------------------------------------------
+// App launchers
+// ---------------------------------------------------------------------------
+
 /**
- * Open the project folder in the configured editor app.
+ * Launch a resolved app entry.
+ * - `app` field: open via `open -a "AppName" "projectPath"`
+ * - `command` field: open in interactive terminal session
+ * - neither (terminal/finder shorthands): handled by label-based dispatch
  */
-export async function openInEditor(project: Project, config: ResolvedConfig): Promise<void> {
-  const app = config.editor;
+export async function launchApp(
+  project: Project,
+  config: ResolvedConfig,
+  app: ResolvedApp,
+): Promise<void> {
   try {
-    execSync(`open -a "${app}" "${project.path}"`, { timeout: 5000 });
-    await showToast(Toast.Style.Success, `Opened ${config.name} in ${app}`);
+    if (app.app) {
+      // macOS app launch
+      execSync(`open -a "${app.app}" "${project.path}"`, { timeout: 5000 });
+      await showToast(Toast.Style.Success, `Opened ${config.name} in ${app.app}`);
+    } else if (app.command) {
+      // Interactive terminal session
+      await openTerminalWithCommand(project, config, app.command);
+      await showToast(Toast.Style.Success, `Launched ${app.label}`);
+    } else if (app.icon === "Finder") {
+      // Finder shorthand
+      execSync(`open "${project.path}"`, { timeout: 5000 });
+    } else if (app.icon === "Terminal") {
+      // Terminal shorthand (just cd + env, no command)
+      await openTerminalWithCommand(project, config, undefined);
+      await showToast(Toast.Style.Success, `Opened terminal in ${config.name}`);
+    } else if (app.icon === "Globe") {
+      // Browser shorthand
+      if (config.meta.url) {
+        await open(config.meta.url);
+      }
+    }
   } catch (error) {
-    await showToast(Toast.Style.Failure, `Failed to open ${app}`, String(error));
+    await showToast(Toast.Style.Failure, `Failed: ${app.label}`, String(error));
   }
 }
 
 /**
  * Open the project's .project-launcher.json in the configured config editor.
- * Falls back to: configEditor pref > project editor > defaultEditor pref > "Sublime Text".
  */
 export async function openConfigFile(project: Project, config: ResolvedConfig): Promise<void> {
   const { configEditor } = prefs();
-  const app = configEditor || config.editor || "Sublime Text";
+  // Find the editor app from the resolved apps (first app with an `app` field)
+  const editorApp = config.apps.find((a) => a.app)?.app;
+  const app = configEditor || editorApp || "Sublime Text";
   const path = configPath(project);
   try {
     execSync(`open -a "${app}" "${path}"`, { timeout: 5000 });
@@ -37,107 +67,12 @@ export async function openConfigFile(project: Project, config: ResolvedConfig): 
   }
 }
 
-/**
- * Open the project folder in the configured terminal app, with env vars if set.
- */
-export async function openTerminal(project: Project, config: ResolvedConfig): Promise<void> {
-  const { terminalApp } = prefs();
-  const envExports = buildEnvExports(config.env);
-  const cdCommand = `${envExports}cd ${escapeForShell(project.path)}`;
-
-  try {
-    switch (terminalApp) {
-      case "iterm":
-        execSync(
-          `osascript -e 'tell application "iTerm2"
-            activate
-            set newWindow to (create window with default profile)
-            tell current session of newWindow
-              write text "${escapeForAppleScript(cdCommand)}"
-            end tell
-          end tell'`,
-          { timeout: 5000 },
-        );
-        break;
-
-      case "warp":
-        execSync(`open -a "Warp" "${project.path}"`, { timeout: 5000 });
-        break;
-
-      case "terminal":
-      default:
-        execSync(
-          `osascript -e 'tell application "Terminal"
-            activate
-            do script "${escapeForAppleScript(cdCommand)}"
-          end tell'`,
-          { timeout: 5000 },
-        );
-        break;
-    }
-    await showToast(Toast.Style.Success, `Opened terminal in ${config.name}`);
-  } catch (error) {
-    await showToast(Toast.Style.Failure, "Failed to open terminal", String(error));
-  }
-}
+// ---------------------------------------------------------------------------
+// Scripts (background execution)
+// ---------------------------------------------------------------------------
 
 /**
- * Open the project in the configured git client.
- */
-export async function openGitClient(project: Project, config: ResolvedConfig): Promise<void> {
-  const { gitClient } = prefs();
-  try {
-    execSync(`open -a "${gitClient}" "${project.path}"`, { timeout: 5000 });
-    await showToast(Toast.Style.Success, `Opened ${config.name} in ${gitClient}`);
-  } catch (error) {
-    await showToast(Toast.Style.Failure, `Failed to open ${gitClient}`, String(error));
-  }
-}
-
-/**
- * Start the project's services using the resolved start command.
- */
-export async function startServices(project: Project, config: ResolvedConfig): Promise<void> {
-  if (!config.start) {
-    await showToast(Toast.Style.Failure, "No start command configured");
-    return;
-  }
-
-  const toast = await showToast(Toast.Style.Animated, `Starting services…`);
-  try {
-    execSync(config.start, { cwd: project.path, timeout: 60000, env: projectEnv(config) });
-    toast.style = Toast.Style.Success;
-    toast.title = `${config.name} started`;
-  } catch (error) {
-    toast.style = Toast.Style.Failure;
-    toast.title = "Failed to start services";
-    toast.message = String(error);
-  }
-}
-
-/**
- * Stop the project's services using the resolved stop command.
- */
-export async function stopServices(project: Project, config: ResolvedConfig): Promise<void> {
-  if (!config.stop) {
-    await showToast(Toast.Style.Failure, "No stop command configured");
-    return;
-  }
-
-  const toast = await showToast(Toast.Style.Animated, `Stopping services…`);
-  try {
-    execSync(config.stop, { cwd: project.path, timeout: 60000, env: projectEnv(config) });
-    toast.style = Toast.Style.Success;
-    toast.title = `${config.name} stopped`;
-  } catch (error) {
-    toast.style = Toast.Style.Failure;
-    toast.title = "Failed to stop services";
-    toast.message = String(error);
-  }
-}
-
-/**
- * Run a named script from the project config.
+ * Run a script in the background via execSync.
  */
 export async function runScript(
   project: Project,
@@ -157,12 +92,9 @@ export async function runScript(
   }
 }
 
-/**
- * Open a URL in the default browser.
- */
-export async function openInBrowser(url: string): Promise<void> {
-  await open(url);
-}
+// ---------------------------------------------------------------------------
+// Config file management
+// ---------------------------------------------------------------------------
 
 /**
  * Move the project's .project-launcher.json to the trash.
@@ -174,14 +106,54 @@ export async function trashConfigFile(project: Project): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Terminal helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Reveal the project folder in Finder.
+ * Open an interactive terminal session in the project dir.
+ * Injects env vars and optionally runs a command.
  */
-export async function openInFinder(project: Project): Promise<void> {
-  try {
-    execSync(`open "${project.path}"`, { timeout: 5000 });
-  } catch (error) {
-    await showToast(Toast.Style.Failure, "Failed to open Finder", String(error));
+async function openTerminalWithCommand(
+  project: Project,
+  config: ResolvedConfig,
+  command: string | undefined,
+): Promise<void> {
+  const { terminalApp } = prefs();
+  const envExports = buildEnvExports(config.env);
+  const cdPart = `cd ${escapeForShell(project.path)}`;
+  const fullCommand = command
+    ? `${envExports}${cdPart}; ${command}`
+    : `${envExports}${cdPart}`;
+
+  switch (terminalApp) {
+    case "iterm":
+      execSync(
+        `osascript -e 'tell application "iTerm2"
+          activate
+          set newWindow to (create window with default profile)
+          tell current session of newWindow
+            write text "${escapeForAppleScript(fullCommand)}"
+          end tell
+        end tell'`,
+        { timeout: 5000 },
+      );
+      break;
+
+    case "warp":
+      execSync(`open -a "Warp" "${project.path}"`, { timeout: 5000 });
+      break;
+
+    case "terminal":
+    default:
+      execSync(
+        `osascript -e 'tell application "Terminal"
+          activate
+          do script "${escapeForAppleScript(fullCommand)}"
+        end tell'`,
+        { timeout: 5000 },
+      );
+      break;
   }
 }
 

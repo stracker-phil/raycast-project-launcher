@@ -10,47 +10,107 @@ export interface Project {
   createdAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Config file types (.project-launcher.json)
+// ---------------------------------------------------------------------------
+
 /**
- * Per-project config read from .project-launcher.json in the project root.
+ * Visual metadata for the project or an individual item.
  */
-export interface ProjectFileConfig {
-  /** Display name (defaults to folder name) */
-  name?: string;
-  /** App name to open with (e.g. "PhpStorm", "Cursor", "Sublime Text") */
-  editor?: string;
-  /** Shell command to start services */
-  start?: string;
-  /** Shell command to stop services */
-  stop?: string;
-  /** Project URL for browser */
-  url?: string;
-  /** Env vars merged into all commands and terminal sessions */
-  env?: Record<string, string>;
-  /** Named shell commands shown as actions (e.g. { "Build": "npm run build" }) */
-  scripts?: Record<string, string>;
-  /** Raycast icon name for the project list (e.g. "Code", "Globe", "Hammer") */
+export interface MetaConfig {
   icon?: string;
-  /** Raycast tint color for the project icon (e.g. "Blue", "Green", "Orange") */
   color?: string;
-  /** Free-form notes displayed in the project detail panel */
+  url?: string;
   notes?: string;
 }
 
 /**
- * Resolved config for a project — merged from config file and global prefs.
+ * An app launcher entry — opens an interactive app or terminal session.
+ * - `app` field: launched via `open -a "AppName" "projectPath"`
+ * - `command` field: opened in a new interactive terminal session
+ * - string shorthand (e.g. "editor"): expands to a predefined app config
  */
+export interface AppEntry {
+  label: string;
+  /** macOS app name — launched via `open -a` */
+  app?: string;
+  /** Shell command — run in an interactive terminal session */
+  command?: string;
+  icon?: string;
+  color?: string;
+  /** Keyboard shortcut, e.g. "cmd+k" or "cmd+shift+k" */
+  shortcut?: string;
+}
+
+/** Predefined app shorthands that expand using preferences / auto-detection. */
+export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "finder";
+export type AppItem = AppShorthand | AppEntry;
+
+/**
+ * A background script entry — runs via execSync, no visible terminal.
+ * string shorthand not currently used, but the type supports it for future use.
+ */
+export interface ScriptEntry {
+  label: string;
+  command: string;
+  icon?: string;
+  color?: string;
+  /** Keyboard shortcut, e.g. "cmd+k" or "cmd+shift+k" */
+  shortcut?: string;
+}
+
+export type ScriptItem = ScriptEntry;
+
+/**
+ * Per-project config read from .project-launcher.json in the project root.
+ */
+export interface ProjectFileConfig {
+  name?: string;
+  meta?: MetaConfig;
+  env?: Record<string, string>;
+  apps?: AppItem[];
+  scripts?: ScriptItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Resolved config (after merging file + prefs + fallbacks)
+// ---------------------------------------------------------------------------
+
+export interface ResolvedApp {
+  label: string;
+  /** For `open -a` style launches */
+  app?: string;
+  /** For interactive terminal launches */
+  command?: string;
+  icon: string;
+  color?: string;
+  shortcut?: string;
+}
+
+export interface ResolvedScript {
+  label: string;
+  command: string;
+  icon: string;
+  color?: string;
+  shortcut?: string;
+}
+
 export interface ResolvedConfig {
   name: string;
-  editor: string;
-  start?: string;
-  stop?: string;
-  url?: string;
+  meta: {
+    icon: string;
+    color: string;
+    url?: string;
+    notes?: string;
+  };
   env?: Record<string, string>;
-  scripts?: Record<string, string>;
-  icon: string;
-  color: string;
-  notes?: string;
+  apps: ResolvedApp[];
+  scripts: ResolvedScript[];
   isGitRepo: boolean;
+  git?: {
+    branch: string;
+    dirty: boolean;
+  };
   hasConfigFile: boolean;
 }
 

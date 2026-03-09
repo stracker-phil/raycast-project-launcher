@@ -1,16 +1,7 @@
 import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
 import { Project, ResolvedConfig } from "./types";
-import {
-  openInEditor,
-  openTerminal,
-  startServices,
-  stopServices,
-  openInBrowser,
-  openGitClient,
-  openInFinder,
-  openConfigFile,
-  runScript,
-} from "./actions";
+import { launchApp, openConfigFile, runScript } from "./actions";
+import { parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 
 interface ProjectActionsProps {
@@ -19,98 +10,80 @@ interface ProjectActionsProps {
   onRefresh: () => void;
 }
 
+interface ActionDetail {
+  type: string;
+  app?: string;
+  command?: string;
+  shortcutLabel?: string;
+  markdown?: string;
+}
+
 interface ActionItem {
   id: string;
   title: string;
   icon: { source: Icon; tintColor?: Color };
   section: string;
+  shortcut?: Keyboard.Shortcut;
+  detail: ActionDetail;
   onAction: () => void | Promise<void>;
 }
 
 export default function ProjectActions({ project, config, onRefresh }: ProjectActionsProps) {
   const { push, pop } = useNavigation();
 
-  const actions: ActionItem[] = [
-    {
-      id: "editor",
-      title: `Open in ${config.editor}`,
-      icon: { source: Icon.Code },
-      section: "Launch",
-      onAction: () => openInEditor(project, config),
-    },
-    {
-      id: "terminal",
-      title: "Open Terminal Here",
-      icon: { source: Icon.Terminal },
-      section: "Launch",
-      onAction: () => openTerminal(project, config),
-    },
-    {
-      id: "finder",
-      title: "Open Finder Here",
-      icon: { source: Icon.Finder },
-      section: "Launch",
-      onAction: () => openInFinder(project),
-    },
-  ];
+  const actions: ActionItem[] = [];
 
-  if (config.isGitRepo) {
+  const env = config.env;
+
+  // Apps section
+  for (const app of config.apps) {
+    const iconSource = Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2;
+    const iconColor = app.color ? (Color[app.color as keyof typeof Color] ?? undefined) : undefined;
+    const isTerminal = !app.app && !!app.command;
     actions.push({
-      id: "git-client",
-      title: "Open Git Client",
-      icon: { source: Icon.CodeBlock },
-      section: "Launch",
-      onAction: () => openGitClient(project, config),
+      id: `app-${app.label}`,
+      title: app.label,
+      icon: { source: iconSource, tintColor: iconColor },
+      section: "Apps",
+      shortcut: parseShortcut(app.shortcut),
+      detail: {
+        type: isTerminal ? "Terminal Session" : "App Launcher",
+        app: app.app,
+        command: app.command,
+        shortcutLabel: app.shortcut,
+      },
+      onAction: () => launchApp(project, config, app),
     });
   }
 
-  if (config.url) {
+  // Scripts section
+  for (const script of config.scripts) {
+    const iconSource = Icon[script.icon as keyof typeof Icon] ?? Icon.Terminal;
+    const iconColor = script.color
+      ? (Color[script.color as keyof typeof Color] ?? Color.Orange)
+      : Color.Orange;
     actions.push({
-      id: "browser",
-      title: "Open in Browser",
-      icon: { source: Icon.Globe },
-      section: "Launch",
-      onAction: () => openInBrowser(config.url!),
+      id: `script-${script.label}`,
+      title: script.label,
+      icon: { source: iconSource, tintColor: iconColor },
+      section: "Scripts",
+      shortcut: parseShortcut(script.shortcut),
+      detail: {
+        type: "Background Script",
+        command: script.command,
+        shortcutLabel: script.shortcut,
+      },
+      onAction: () => runScript(project, config, script.label, script.command),
     });
   }
 
-  if (config.start) {
-    actions.push({
-      id: "start",
-      title: "Start Services",
-      icon: { source: Icon.Play, tintColor: Color.Green },
-      section: "Services",
-      onAction: () => startServices(project, config),
-    });
-  }
-
-  if (config.stop) {
-    actions.push({
-      id: "stop",
-      title: "Stop Services",
-      icon: { source: Icon.Stop, tintColor: Color.Red },
-      section: "Services",
-      onAction: () => stopServices(project, config),
-    });
-  }
-
-  if (config.scripts) {
-    for (const [label, command] of Object.entries(config.scripts)) {
-      actions.push({
-        id: `script-${label}`,
-        title: label,
-        icon: { source: Icon.Terminal, tintColor: Color.Orange },
-        section: "Scripts",
-        onAction: () => runScript(project, config, label, command),
-      });
-    }
-  }
-
+  // Manage section
   actions.push({
     id: "edit-project",
     title: "Edit Project",
     icon: { source: Icon.Pencil },
     section: "Manage",
+    detail: { type: "Manage" },
     onAction: () =>
       push(
         <AddProjectCommand
@@ -128,6 +101,42 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     title: "Edit Config File",
     icon: { source: Icon.Document },
     section: "Manage",
+    detail: {
+      type: "Manage",
+      markdown: [
+        "## Apps",
+        "Shorthands: `editor`, `terminal`,",
+        "`git`, `browser`, `finder`",
+        "",
+        "Full entry:",
+        "```json",
+        "{",
+        '  "label": "Dev Server",',
+        '  "app": "AppName",',
+        '  "command": "cd ${dir} && npm run dev",',
+        '  "icon": "Terminal",',
+        '  "color": "Green",',
+        '  "shortcut": "cmd+d"',
+        "}",
+        "```",
+        "- `app` — open via `open -a`",
+        "- `command` — run in terminal",
+        "- `${dir}` — project path",
+        "- `${url}` — meta.url value",
+        "",
+        "## Scripts",
+        "Background commands (no terminal):",
+        "```json",
+        "{",
+        '  "label": "Build",',
+        '  "command": "cd ${dir} && npm run build",',
+        '  "icon": "Hammer",',
+        '  "color": "Orange",',
+        '  "shortcut": "cmd+b"',
+        "}",
+        "```",
+      ].join("\n"),
+    },
     onAction: () => openConfigFile(project, config),
   });
 
@@ -139,13 +148,46 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     sections.set(a.section, group);
   }
 
+  function actionDetail(detail: ActionDetail) {
+    if (detail.markdown) {
+      return <List.Item.Detail markdown={detail.markdown} />;
+    }
+
+    const commandPreview = detail.command || (detail.app ? `open -a "${detail.app}"` : undefined);
+    const markdown = commandPreview ? `\`\`\`\n${commandPreview}\n\`\`\`` : "";
+
+    return (
+      <List.Item.Detail
+        markdown={markdown}
+        metadata={
+          <List.Item.Detail.Metadata>
+            <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
+            {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
+            {detail.shortcutLabel && (
+              <List.Item.Detail.Metadata.Label title="Shortcut" text={detail.shortcutLabel} />
+            )}
+            {env && Object.keys(env).length > 0 && detail.type !== "Manage" && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Environment" />
+                {Object.entries(env).map(([key, value]) => (
+                  <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
+                ))}
+              </>
+            )}
+          </List.Item.Detail.Metadata>
+        }
+      />
+    );
+  }
+
   function projectDeeplink(projectId: string): string {
     const context = encodeURIComponent(JSON.stringify({ projectId }));
     return `raycast://extensions/philipp/dev-project-launcher/list-projects?context=${context}`;
   }
 
   return (
-    <List navigationTitle={config.name} searchBarPlaceholder="Search actions…">
+    <List navigationTitle={config.name} searchBarPlaceholder="Search actions…" isShowingDetail>
       {[...sections.entries()].map(([section, items]) => (
         <List.Section key={section} title={section}>
           {items.map((item) => (
@@ -153,9 +195,10 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
               key={item.id}
               title={item.title}
               icon={item.icon}
+              detail={actionDetail(item.detail)}
               actions={
                 <ActionPanel>
-                  <Action title={item.title} icon={item.icon} onAction={item.onAction} />
+                  <Action title={item.title} icon={item.icon} shortcut={item.shortcut} onAction={item.onAction} />
                   <Action.CreateQuicklink
                     shortcut={{ modifiers: ["cmd"], key: "p" }}
                     quicklink={{

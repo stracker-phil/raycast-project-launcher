@@ -15,7 +15,8 @@ import { useEffect, useState } from "react";
 import { Project, ResolvedConfig } from "./types";
 import { loadProjects, removeProject } from "./storage";
 import { resolveConfig } from "./config";
-import { openInEditor, openTerminal, openInBrowser, openGitClient, openInFinder, openConfigFile, trashConfigFile } from "./actions";
+import { launchApp, openConfigFile, trashConfigFile } from "./actions";
+import { parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 import ProjectActions from "./project-actions";
 
@@ -120,32 +121,54 @@ export default function ListProjectsCommand(
         metadata={
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Path" text={project.path} />
-            <List.Item.Detail.Metadata.Label title="Editor" text={config.editor} />
             {project.tag && (
               <List.Item.Detail.Metadata.TagList title="Tag">
                 <List.Item.Detail.Metadata.TagList.Item text={project.tag} color={Color.Blue} />
               </List.Item.Detail.Metadata.TagList>
             )}
-            {config.isGitRepo && (
-              <List.Item.Detail.Metadata.TagList title="Git">
-                <List.Item.Detail.Metadata.TagList.Item text="Repository" color={Color.Green} />
-              </List.Item.Detail.Metadata.TagList>
-            )}
-            {config.url && (
+            {config.isGitRepo && config.git && (
               <>
                 <List.Item.Detail.Metadata.Separator />
-                <List.Item.Detail.Metadata.Link title="URL" text={config.url} target={config.url} />
+                <List.Item.Detail.Metadata.Label title="Git" />
+                <List.Item.Detail.Metadata.Label title="  Branch" text={config.git.branch} />
+                <List.Item.Detail.Metadata.TagList title="  Status">
+                  <List.Item.Detail.Metadata.TagList.Item
+                    text={config.git.dirty ? "Uncommitted Changes" : "Clean"}
+                    color={config.git.dirty ? Color.Orange : Color.Green}
+                  />
+                </List.Item.Detail.Metadata.TagList>
               </>
             )}
-            {(config.start || config.stop) && (
+            {config.meta.url && (
               <>
                 <List.Item.Detail.Metadata.Separator />
-                {config.start && (
-                  <List.Item.Detail.Metadata.Label title="Start" text={config.start} />
-                )}
-                {config.stop && (
-                  <List.Item.Detail.Metadata.Label title="Stop" text={config.stop} />
-                )}
+                <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+              </>
+            )}
+            {config.apps.length > 0 && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Apps" />
+                {config.apps.map((app) => (
+                  <List.Item.Detail.Metadata.Label
+                    key={app.label}
+                    title={`  ${app.label}`}
+                    text={app.app || app.command || ""}
+                  />
+                ))}
+              </>
+            )}
+            {config.scripts.length > 0 && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                <List.Item.Detail.Metadata.Label title="Scripts" />
+                {config.scripts.map((script) => (
+                  <List.Item.Detail.Metadata.Label
+                    key={script.label}
+                    title={`  ${script.label}`}
+                    text={script.command}
+                  />
+                ))}
               </>
             )}
             {config.env && Object.keys(config.env).length > 0 && (
@@ -157,19 +180,10 @@ export default function ListProjectsCommand(
                 ))}
               </>
             )}
-            {config.scripts && Object.keys(config.scripts).length > 0 && (
+            {config.meta.notes && (
               <>
                 <List.Item.Detail.Metadata.Separator />
-                <List.Item.Detail.Metadata.Label title="Scripts" />
-                {Object.entries(config.scripts).map(([label, cmd]) => (
-                  <List.Item.Detail.Metadata.Label key={label} title={`  ${label}`} text={cmd} />
-                ))}
-              </>
-            )}
-            {config.notes && (
-              <>
-                <List.Item.Detail.Metadata.Separator />
-                <List.Item.Detail.Metadata.Label title="Notes" text={config.notes} />
+                <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
               </>
             )}
           </List.Item.Detail.Metadata>
@@ -179,8 +193,8 @@ export default function ListProjectsCommand(
   }
 
   function projectItem({ project, config }: ProjectWithConfig) {
-    const iconSource = Icon[config.icon as keyof typeof Icon] ?? Icon.Folder;
-    const iconColor = Color[config.color as keyof typeof Color] ?? Color.Blue;
+    const iconSource = Icon[config.meta.icon as keyof typeof Icon] ?? Icon.Folder;
+    const iconColor = Color[config.meta.color as keyof typeof Color] ?? Color.Blue;
 
     return (
       <List.Item
@@ -203,40 +217,15 @@ export default function ListProjectsCommand(
             </ActionPanel.Section>
 
             <ActionPanel.Section title="Quick Actions">
-              <Action
-                title={`Open in ${config.editor}`}
-                icon={Icon.Code}
-                shortcut={{ modifiers: ["cmd"], key: "o" }}
-                onAction={() => openInEditor(project, config)}
-              />
-              <Action
-                title="Open Terminal Here"
-                icon={Icon.Terminal}
-                shortcut={{ modifiers: ["cmd"], key: "t" }}
-                onAction={() => openTerminal(project, config)}
-              />
-              <Action
-                title="Open Finder Here"
-                icon={Icon.Finder}
-                shortcut={{ modifiers: ["cmd"], key: "f" }}
-                onAction={() => openInFinder(project)}
-              />
-              {config.isGitRepo && (
+              {config.apps.map((app) => (
                 <Action
-                  title="Open Git Client"
-                  icon={Icon.CodeBlock}
-                  shortcut={{ modifiers: ["cmd"], key: "g" }}
-                  onAction={() => openGitClient(project, config)}
+                  key={app.label}
+                  title={app.label}
+                  icon={Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2}
+                  shortcut={parseShortcut(app.shortcut)}
+                  onAction={() => launchApp(project, config, app)}
                 />
-              )}
-              {config.url && (
-                <Action
-                  title="Open in Browser"
-                  icon={Icon.Globe}
-                  shortcut={{ modifiers: ["cmd"], key: "b" }}
-                  onAction={() => openInBrowser(config.url!)}
-                />
-              )}
+              ))}
             </ActionPanel.Section>
 
             <ActionPanel.Section title="Manage">
@@ -335,3 +324,4 @@ function projectDeeplink(projectId: string): string {
   const context = encodeURIComponent(JSON.stringify({ projectId }));
   return `raycast://extensions/philipp/dev-project-launcher/list-projects?context=${context}`;
 }
+

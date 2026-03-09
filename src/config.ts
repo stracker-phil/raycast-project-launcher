@@ -1,7 +1,18 @@
 import { getPreferenceValues } from "@raycast/api";
+import { execSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, join } from "path";
-import { ExtensionPreferences, Project, ProjectFileConfig, ResolvedConfig } from "./types";
+import {
+  AppItem,
+  AppShorthand,
+  ExtensionPreferences,
+  Project,
+  ProjectFileConfig,
+  ResolvedApp,
+  ResolvedConfig,
+  ResolvedScript,
+  ScriptItem,
+} from "./types";
 
 export const CONFIG_FILENAME = ".project-launcher.json";
 
@@ -30,49 +41,189 @@ export function readConfig(projectPath: string): ProjectFileConfig | null {
 }
 
 /**
- * Write the config file, preserving fields not managed by the form (env, scripts).
+ * Write the config file, merging with existing content.
  */
 export function writeConfig(projectPath: string, updates: Partial<ProjectFileConfig>): void {
   const existing = readConfig(projectPath);
   const defaults: ProjectFileConfig = existing ?? {
     name: basename(projectPath),
-    editor: "",
-    start: "",
-    stop: "",
-    url: "",
+    meta: { icon: "Folder", color: "Blue" },
     env: {},
-    scripts: {},
-    icon: "Folder",
-    color: "Blue",
+    apps: ["editor", "terminal", "finder"],
+    scripts: [],
   };
   const merged = { ...defaults, ...updates };
   const path = join(projectPath, CONFIG_FILENAME);
   writeFileSync(path, JSON.stringify(merged, null, 2) + "\n", "utf-8");
 }
 
+// ---------------------------------------------------------------------------
+// Variable substitution
+// ---------------------------------------------------------------------------
+
+/**
+ * Replace ${dir} and ${url} in a string with project values.
+ */
+function substituteVars(str: string, projectPath: string, url?: string): string {
+  let result = str.replace(/\$\{dir\}/g, projectPath);
+  if (url) {
+    result = result.replace(/\$\{url\}/g, url);
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// App shorthand expansion
+// ---------------------------------------------------------------------------
+
+const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "finder"]);
+
+function isAppShorthand(item: AppItem): item is AppShorthand {
+  return typeof item === "string" && APP_SHORTHANDS.has(item);
+}
+
+function expandAppShorthand(
+  shorthand: AppShorthand,
+  p: ExtensionPreferences,
+  isGitRepo: boolean,
+  url?: string,
+): ResolvedApp | null {
+  switch (shorthand) {
+    case "editor":
+      return {
+        label: `Open in ${p.defaultEditor || "PhpStorm"}`,
+        app: p.defaultEditor || "PhpStorm",
+        icon: "Code",
+        shortcut: "cmd+o",
+      };
+    case "terminal":
+      return {
+        label: "Open Terminal",
+        icon: "Terminal",
+        shortcut: "cmd+t",
+      };
+    case "git":
+      if (!isGitRepo) return null;
+      return {
+        label: `Open ${p.gitClient || "Git Client"}`,
+        app: p.gitClient || undefined,
+        icon: "CodeBlock",
+        shortcut: "cmd+g",
+      };
+    case "browser":
+      if (!url) return null;
+      return {
+        label: "Open in Browser",
+        icon: "Globe",
+        shortcut: "cmd+b",
+      };
+    case "finder":
+      return {
+        label: "Open in Finder",
+        icon: "Finder",
+        shortcut: "cmd+f",
+      };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Resolution
+// ---------------------------------------------------------------------------
+
+function resolveApps(
+  items: AppItem[] | undefined,
+  p: ExtensionPreferences,
+  isGitRepo: boolean,
+  projectPath: string,
+  url?: string,
+): ResolvedApp[] {
+  if (!items || !Array.isArray(items) || items.length === 0) return [];
+
+  const resolved: ResolvedApp[] = [];
+  for (const item of items) {
+    if (isAppShorthand(item)) {
+      const expanded = expandAppShorthand(item, p, isGitRepo, url);
+      if (expanded) resolved.push(expanded);
+    } else {
+      // Full app entry object
+      const app: ResolvedApp = {
+        label: item.label,
+        icon: item.icon || "AppWindowGrid2x2",
+        color: item.color,
+        shortcut: item.shortcut,
+      };
+      if (item.app) {
+        app.app = item.app;
+      }
+      if (item.command) {
+        app.command = substituteVars(item.command, projectPath, url);
+      }
+      resolved.push(app);
+    }
+  }
+  return resolved;
+}
+
+function resolveScripts(
+  items: ScriptItem[] | undefined,
+  projectPath: string,
+  url?: string,
+): ResolvedScript[] {
+  if (!items || !Array.isArray(items) || items.length === 0) return [];
+
+  return items.map((item) => ({
+    label: item.label,
+    command: substituteVars(item.command, projectPath, url),
+    icon: item.icon || "Terminal",
+    color: item.color,
+    shortcut: item.shortcut,
+  }));
+}
+
+function resolveGitInfo(projectPath: string): { branch: string; dirty: boolean } | undefined {
+  try {
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+      cwd: projectPath,
+      encoding: "utf-8",
+      timeout: 3000,
+    }).trim();
+    const status = execSync("git status --porcelain", {
+      cwd: projectPath,
+      encoding: "utf-8",
+      timeout: 3000,
+    }).trim();
+    return { branch, dirty: status.length > 0 };
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Resolve the full config for a project by merging config file with global prefs.
  */
 export function resolveConfig(project: Project): ResolvedConfig {
-  const { defaultEditor } = prefs();
+  const p = prefs();
   const fileConfig = readConfig(project.path);
+  const isGitRepo = existsSync(join(project.path, ".git"));
 
-  const env = fileConfig?.env && Object.keys(fileConfig.env).length > 0 ? fileConfig.env : undefined;
-  const scripts =
-    fileConfig?.scripts && Object.keys(fileConfig.scripts).length > 0 ? fileConfig.scripts : undefined;
+  const env =
+    fileConfig?.env && Object.keys(fileConfig.env).length > 0 ? fileConfig.env : undefined;
+
+  const url = fileConfig?.meta?.url || undefined;
 
   return {
     name: fileConfig?.name || basename(project.path),
-    editor: fileConfig?.editor || defaultEditor || "PhpStorm",
-    start: fileConfig?.start || undefined,
-    stop: fileConfig?.stop || undefined,
-    url: fileConfig?.url || undefined,
+    meta: {
+      icon: fileConfig?.meta?.icon || "Folder",
+      color: fileConfig?.meta?.color || "Blue",
+      url,
+      notes: fileConfig?.meta?.notes || undefined,
+    },
     env,
-    scripts,
-    icon: fileConfig?.icon || "Folder",
-    color: fileConfig?.color || "Blue",
-    notes: fileConfig?.notes || undefined,
-    isGitRepo: existsSync(join(project.path, ".git")),
+    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url),
+    scripts: resolveScripts(fileConfig?.scripts, project.path, url),
+    isGitRepo,
+    git: isGitRepo ? resolveGitInfo(project.path) : undefined,
     hasConfigFile: fileConfig !== null,
   };
 }

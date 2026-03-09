@@ -32,10 +32,6 @@ export default function AddProjectCommand(props: AddProjectProps) {
     path: string[];
     tag: string;
     name: string;
-    editor: string;
-    url: string;
-    start: string;
-    stop: string;
     icon: string;
     color: string;
     notes: string;
@@ -54,16 +50,14 @@ export default function AddProjectCommand(props: AddProjectProps) {
       createdAt: editProject?.createdAt ?? new Date().toISOString(),
     };
 
-    // Write form fields to the JSON config (works for both add and edit)
+    // Write form fields to the JSON config
     writeConfig(projectPath, {
       name: values.name.trim() || undefined,
-      editor: values.editor.trim() || undefined,
-      url: values.url.trim() || undefined,
-      start: values.start.trim() || undefined,
-      stop: values.stop.trim() || undefined,
-      icon: values.icon || "Folder",
-      color: values.color || "Blue",
-      notes: values.notes.trim() || undefined,
+      meta: {
+        icon: values.icon || "Folder",
+        color: values.color || "Blue",
+        notes: values.notes.trim() || undefined,
+      },
     });
 
     if (isEditing) {
@@ -72,8 +66,6 @@ export default function AddProjectCommand(props: AddProjectProps) {
     } else {
       await addProject(project);
       await showToast(Toast.Style.Success, "Project added");
-      const config = resolveConfig(project);
-      await openConfigFile(project, config);
     }
 
     onSaved?.();
@@ -137,7 +129,7 @@ export default function AddProjectCommand(props: AddProjectProps) {
       <Form.Dropdown
         id="icon"
         title="Icon"
-        defaultValue={fileConfig?.icon ?? "Folder"}
+        defaultValue={fileConfig?.meta?.icon ?? "Folder"}
       >
         {PROJECT_ICONS.map((name) => (
           <Form.Dropdown.Item
@@ -152,7 +144,7 @@ export default function AddProjectCommand(props: AddProjectProps) {
       <Form.Dropdown
         id="color"
         title="Color"
-        defaultValue={fileConfig?.color ?? "Blue"}
+        defaultValue={fileConfig?.meta?.color ?? "Blue"}
       >
         {PROJECT_COLORS.map((name) => (
           <Form.Dropdown.Item
@@ -166,42 +158,11 @@ export default function AddProjectCommand(props: AddProjectProps) {
 
       <Form.Separator />
 
-      <Form.TextField
-        id="editor"
-        title="Editor"
-        placeholder="PhpStorm"
-        defaultValue={fileConfig?.editor ?? ""}
-        info="App name (e.g. PhpStorm, Cursor, VS Code). Leave empty for default."
-      />
-
-      <Form.TextField
-        id="url"
-        title="URL"
-        placeholder="https://myproject.ddev.site"
-        defaultValue={fileConfig?.url ?? ""}
-      />
-
-      <Form.TextField
-        id="start"
-        title="Start Command"
-        placeholder="ddev start"
-        defaultValue={fileConfig?.start ?? ""}
-      />
-
-      <Form.TextField
-        id="stop"
-        title="Stop Command"
-        placeholder="ddev stop"
-        defaultValue={fileConfig?.stop ?? ""}
-      />
-
-      <Form.Separator />
-
       <Form.TextArea
         id="notes"
         title="Notes"
         placeholder="Free-form notes about this project…"
-        defaultValue={fileConfig?.notes ?? ""}
+        defaultValue={fileConfig?.meta?.notes ?? ""}
       />
     </Form>
   );
