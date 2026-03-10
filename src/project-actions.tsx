@@ -1,6 +1,7 @@
 import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
 import { execSync } from "child_process";
 import { basename } from "path";
+import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
 import { launchApp, openConfigFile, runScript } from "./actions";
 import { parseShortcut } from "./shortcuts";
@@ -196,17 +197,20 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
             <List.Item.Detail
               metadata={
                 <List.Item.Detail.Metadata>
-                  <List.Item.Detail.Metadata.Label title="Path" text={project.path} />
+                  <List.Item.Detail.Metadata.Label title="Path" text={project.path.replace(homedir(), "~")} />
                   {config.meta.tag && (
                     <List.Item.Detail.Metadata.TagList title="Tag">
                       <List.Item.Detail.Metadata.TagList.Item text={config.meta.tag} color={Color.Blue} />
                     </List.Item.Detail.Metadata.TagList>
                   )}
+                  {config.meta.notes && (
+                    <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
+                  )}
                   {config.isGitRepo && config.git && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Label title="Branch" text={config.git.branch} />
-                      <List.Item.Detail.Metadata.TagList title="Status">
+                      <List.Item.Detail.Metadata.Label title="Git Branch" text={config.git.branch} />
+                      <List.Item.Detail.Metadata.TagList title="Git Status">
                         <List.Item.Detail.Metadata.TagList.Item
                           text={config.git.dirty ? "Uncommitted Changes" : "Clean"}
                           color={config.git.dirty ? Color.Orange : Color.Green}
@@ -227,12 +231,6 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                       {Object.entries(env).map(([key, value]) => (
                         <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
                       ))}
-                    </>
-                  )}
-                  {config.meta.notes && (
-                    <>
-                      <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
                     </>
                   )}
                 </List.Item.Detail.Metadata>
