@@ -13,7 +13,14 @@ import {
 } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { Project, ResolvedConfig } from "./types";
-import { loadProjects, removeProject } from "./storage";
+import {
+  getLastOpenedProjectId,
+  loadConfigCache,
+  loadProjects,
+  removeProject,
+  saveConfigCache,
+  setLastOpenedProjectId,
+} from "./storage";
 import { resolveConfig } from "./config";
 import { launchApp, openConfigFile, trashConfigFile } from "./actions";
 import { parseShortcut } from "./shortcuts";
@@ -33,34 +40,89 @@ export default function ListProjectsCommand(
   props: LaunchProps<{ launchContext?: LaunchContext }>,
 ) {
   const contextId = props.launchContext?.projectId;
-  const [items, setItems] = useState<ProjectWithConfig[]>([]);
+  const [listState, setListState] = useState<{
+    items: ProjectWithConfig[];
+    lastOpenedId: string | undefined;
+    isLoading: boolean;
+  }>({ items: [], lastOpenedId: undefined, isLoading: true });
   const [directMatch, setDirectMatch] = useState<ProjectWithConfig | null>(null);
   const [selectedTag, setSelectedTag] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(true);
+  // Deferred selection: set one render after items appear so Raycast's native
+  // layer has registered the items before we ask it to select one.
+  const [selection, setSelection] = useState<string | undefined>(undefined);
   const { push } = useNavigation();
 
-  async function refresh() {
-    setIsLoading(true);
-    const loaded = await loadProjects();
-    const resolved = loaded.map((project) => ({ project, config: resolveConfig(project) }));
+  const { items, lastOpenedId, isLoading } = listState;
 
-    if (contextId) {
-      const match = resolved.find((item) => item.project.id === contextId);
-      if (match) {
-        setDirectMatch(match);
-        setIsLoading(false);
-        return;
-      }
+  // Deferred selection: Raycast needs ~50ms to register items before
+  // selectedItemId takes effect.
+  useEffect(() => {
+    if (items.length > 0 && lastOpenedId) {
+      setTimeout(() => setSelection(lastOpenedId), 50);
     }
+  }, [items.length, lastOpenedId]);
+
+  // Load projects: try cache first for instant render, then resolve fresh
+  // configs in the background (only updates cache, never replaces items).
+  useEffect(() => {
+    (async () => {
+      const [loaded, storedLastId, cachedConfigs] = await Promise.all([
+        loadProjects(),
+        getLastOpenedProjectId(),
+        loadConfigCache(),
+      ]);
+
+      // Try to build list from cache (instant, no file I/O)
+      const hasCachedAll = loaded.every((p) => cachedConfigs[p.id]);
+      const items = hasCachedAll
+        ? loaded.map((project) => ({ project, config: cachedConfigs[project.id] }))
+        : loaded.map((project) => ({ project, config: resolveConfig(project) }));
+
+      items.sort((a, b) => a.config.name.localeCompare(b.config.name));
+
+      if (contextId) {
+        const match = items.find((item) => item.project.id === contextId);
+        if (match) {
+          setDirectMatch(match);
+        }
+      }
+
+      setListState({
+        items,
+        lastOpenedId: storedLastId ?? undefined,
+        isLoading: false,
+      });
+
+      // Background: resolve fresh configs and update cache for next open.
+      // Uses setTimeout to avoid blocking the main thread during selection.
+      setTimeout(() => {
+        const newCache: Record<string, ResolvedConfig> = {};
+        for (const project of loaded) {
+          newCache[project.id] = resolveConfig(project);
+        }
+        saveConfigCache(newCache);
+      }, 500);
+    })();
+  }, []);
+
+  /** Full refresh from disk (used by edit/delete actions). */
+  async function refresh() {
+    setListState((s) => ({ ...s, isLoading: true }));
+    const loaded = await loadProjects();
+    const resolved = loaded.map((project) => ({
+      project,
+      config: resolveConfig(project),
+    }));
+
+    const newCache: Record<string, ResolvedConfig> = {};
+    for (const item of resolved) {
+      newCache[item.project.id] = item.config;
+    }
+    saveConfigCache(newCache);
 
     resolved.sort((a, b) => a.config.name.localeCompare(b.config.name));
-    setItems(resolved);
-    setIsLoading(false);
+    setListState((s) => ({ ...s, items: resolved, isLoading: false }));
   }
-
-  useEffect(() => {
-    refresh();
-  }, []);
 
   // Deep link: go directly to project actions
   if (directMatch) {
@@ -199,6 +261,7 @@ export default function ListProjectsCommand(
     return (
       <List.Item
         key={project.id}
+        id={project.id}
         title={config.name}
         icon={{ source: iconSource, tintColor: iconColor }}
         detail={projectDetail(config, project)}
@@ -208,11 +271,12 @@ export default function ListProjectsCommand(
               <Action
                 title="Show Actions"
                 icon={Icon.List}
-                onAction={() =>
-                  push(
-                    <ProjectActions project={project} config={config} onRefresh={refresh} />,
-                  )
-                }
+                onAction={async () => {
+                  await setLastOpenedProjectId(project.id);
+                  setListState((s) => ({ ...s, lastOpenedId: project.id }));
+                  setSelection(project.id);
+                  push(<ProjectActions project={project} config={config} onRefresh={refresh} />);
+                }}
               />
             </ActionPanel.Section>
 
@@ -244,7 +308,7 @@ export default function ListProjectsCommand(
                 onAction={() => openConfigFile(project, config)}
               />
               <Action.CreateQuicklink
-                shortcut={{ modifiers: ["cmd"], key: "p" }}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                 quicklink={{
                   name: `Project: ${config.name}`,
                   link: projectDeeplink(project.id),
@@ -268,6 +332,7 @@ export default function ListProjectsCommand(
     <List
       isLoading={isLoading}
       isShowingDetail
+      selectedItemId={selection}
       searchBarPlaceholder="Search projects…"
       searchBarAccessory={
         allTags.length > 0 ? (
@@ -324,4 +389,3 @@ function projectDeeplink(projectId: string): string {
   const context = encodeURIComponent(JSON.stringify({ projectId }));
   return `raycast://extensions/philipp/dev-project-launcher/list-projects?context=${context}`;
 }
-

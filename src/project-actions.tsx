@@ -39,7 +39,6 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
   for (const app of config.apps) {
     const iconSource = Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2;
     const iconColor = app.color ? (Color[app.color as keyof typeof Color] ?? undefined) : undefined;
-    const isTerminal = !app.app && !!app.command;
     actions.push({
       id: `app-${app.label}`,
       title: app.label,
@@ -47,7 +46,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       section: "Apps",
       shortcut: parseShortcut(app.shortcut),
       detail: {
-        type: isTerminal ? "Terminal Session" : "App Launcher",
+        type: "App Launcher",
         app: app.app,
         command: app.command,
         shortcutLabel: app.shortcut,
@@ -153,16 +152,13 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       return <List.Item.Detail markdown={detail.markdown} />;
     }
 
-    const commandPreview = detail.command || (detail.app ? `open -a "${detail.app}"` : undefined);
-    const markdown = commandPreview ? `\`\`\`\n${commandPreview}\n\`\`\`` : "";
-
     return (
       <List.Item.Detail
-        markdown={markdown}
         metadata={
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
             {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
+            {detail.command && <List.Item.Detail.Metadata.Label title="Command" text={detail.command} />}
             {detail.shortcutLabel && (
               <List.Item.Detail.Metadata.Label title="Shortcut" text={detail.shortcutLabel} />
             )}
@@ -200,7 +196,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                 <ActionPanel>
                   <Action title={item.title} icon={item.icon} shortcut={item.shortcut} onAction={item.onAction} />
                   <Action.CreateQuicklink
-                    shortcut={{ modifiers: ["cmd"], key: "p" }}
+                    shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                     quicklink={{
                       name: `Project: ${config.name}`,
                       link: projectDeeplink(project.id),

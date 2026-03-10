@@ -43,7 +43,7 @@ export interface AppEntry {
 }
 
 /** Predefined app shorthands that expand using preferences / auto-detection. */
-export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "finder";
+export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "finder" | "claude";
 export type AppItem = AppShorthand | AppEntry;
 
 /**
@@ -116,6 +116,7 @@ export interface ResolvedConfig {
 
 /**
  * Icon choices for the project list (subset of Raycast Icon enum).
+ * https://developers.raycast.com/api-reference/user-interface/icons-and-images
  */
 export const PROJECT_ICONS = [
   "Folder",
@@ -129,9 +130,14 @@ export const PROJECT_ICONS = [
   "Book",
   "Box",
   "Bug",
+  "Calendar",
   "Cog",
+  "WrenchScrewdriver",
   "Document",
+  "Gauge",
   "GameController",
+  "House",
+  "Heart",
   "Leaf",
   "LightBulb",
   "Link",
@@ -141,11 +147,23 @@ export const PROJECT_ICONS = [
   "Pencil",
   "Person",
   "Phone",
-  "Rocket",
+  "Plug",
   "Shield",
+  "Info",
   "Snippets",
   "Wand",
-  "Wrench",
+  "Stars",
+  "Layers",
+  "AppWindow",
+  "BulletPoints",
+  "Text",
+  "Play",
+  "Stop",
+  "Trash",
+  "Power",
+  "Tag",
+  "Stars",
+  "Repeat",
 ] as const;
 
 /**

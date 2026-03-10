@@ -1,5 +1,5 @@
 import { LocalStorage } from "@raycast/api";
-import { Project } from "./types";
+import { Project, ResolvedConfig } from "./types";
 
 const STORAGE_KEY = "projects";
 
@@ -50,6 +50,36 @@ export async function updateProject(updated: Project): Promise<void> {
     projects[idx] = updated;
     await saveProjects(projects);
   }
+}
+
+const LAST_OPENED_KEY = "lastOpenedProjectId";
+
+export async function getLastOpenedProjectId(): Promise<string | null> {
+  return (await LocalStorage.getItem<string>(LAST_OPENED_KEY)) ?? null;
+}
+
+export async function setLastOpenedProjectId(id: string): Promise<void> {
+  await LocalStorage.setItem(LAST_OPENED_KEY, id);
+}
+
+// ---------------------------------------------------------------------------
+// Config cache — instant list render from cached ResolvedConfig
+// ---------------------------------------------------------------------------
+
+const CONFIG_CACHE_KEY = "configCache";
+
+export async function loadConfigCache(): Promise<Record<string, ResolvedConfig>> {
+  const raw = await LocalStorage.getItem<string>(CONFIG_CACHE_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, ResolvedConfig>;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveConfigCache(cache: Record<string, ResolvedConfig>): Promise<void> {
+  await LocalStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cache));
 }
 
 /**

@@ -76,7 +76,7 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
 // App shorthand expansion
 // ---------------------------------------------------------------------------
 
-const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "finder"]);
+const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "finder", "claude"]);
 
 function isAppShorthand(item: AppItem): item is AppShorthand {
   return typeof item === "string" && APP_SHORTHANDS.has(item);
@@ -105,9 +105,9 @@ function expandAppShorthand(
     case "git":
       if (!isGitRepo) return null;
       return {
-        label: `Open ${p.gitClient || "Git Client"}`,
+        label: `Open Git Client`,
         app: p.gitClient || undefined,
-        icon: "CodeBlock",
+        icon: "CheckList",
         shortcut: "cmd+g",
       };
     case "browser":
@@ -122,6 +122,13 @@ function expandAppShorthand(
         label: "Open in Finder",
         icon: "Finder",
         shortcut: "cmd+f",
+      };
+    case "claude":
+      return {
+        label: "Claude Code",
+        command: "claude",
+        icon: "Stars",
+        shortcut: "cmd+c",
       };
   }
 }
@@ -148,7 +155,7 @@ function resolveApps(
       // Full app entry object
       const app: ResolvedApp = {
         label: item.label,
-        icon: item.icon || "AppWindowGrid2x2",
+        icon: item.icon || "Window",
         color: item.color,
         shortcut: item.shortcut,
       };

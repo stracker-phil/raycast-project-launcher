@@ -28,18 +28,30 @@ export async function launchApp(
       // macOS app launch
       execSync(`open -a "${app.app}" "${project.path}"`, { timeout: 5000 });
       await showToast(Toast.Style.Success, `Opened ${config.name} in ${app.app}`);
-    } else if (app.command) {
+      return;
+    }
+
+    if (app.command) {
       // Interactive terminal session
       await openTerminalWithCommand(project, config, app.command);
       await showToast(Toast.Style.Success, `Launched ${app.label}`);
-    } else if (app.icon === "Finder") {
+      return;
+    }
+
+    if (app.icon === "Finder") {
       // Finder shorthand
       execSync(`open "${project.path}"`, { timeout: 5000 });
-    } else if (app.icon === "Terminal") {
+      return;
+    }
+
+    if (app.icon === "Terminal") {
       // Terminal shorthand (just cd + env, no command)
       await openTerminalWithCommand(project, config, undefined);
       await showToast(Toast.Style.Success, `Opened terminal in ${config.name}`);
-    } else if (app.icon === "Globe") {
+      return;
+    }
+
+    if (app.icon === "Globe") {
       // Browser shorthand
       if (config.meta.url) {
         await open(config.meta.url);
@@ -59,8 +71,18 @@ export async function openConfigFile(project: Project, config: ResolvedConfig): 
   const editorApp = config.apps.find((a) => a.app)?.app;
   const app = configEditor || editorApp || "Sublime Text";
   const path = configPath(project);
+
   try {
-    execSync(`open -a "${app}" "${path}"`, { timeout: 5000 });
+    switch (app.toLowerCase()) {
+      case "subl":
+      case "sublime text":
+        execSync(`"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl" "${path}"`, { timeout: 5000 });
+        break;
+
+      default:
+        execSync(`open -a "${app}" "${path}"`, { timeout: 5000 });
+    }
+
     await showToast(Toast.Style.Success, `Opened config in ${app}`);
   } catch (error) {
     await showToast(Toast.Style.Failure, `Failed to open config in ${app}`, String(error));
