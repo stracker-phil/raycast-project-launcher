@@ -17,3 +17,22 @@ export function parseShortcut(shortcut?: string): Keyboard.Shortcut | undefined 
   });
   return { modifiers, key };
 }
+
+const MODIFIER_SYMBOLS: Record<string, string> = {
+  cmd: "⌘",
+  ctrl: "⌃",
+  opt: "⌥",
+  alt: "⌥",
+  shift: "⇧",
+};
+
+/**
+ * Render a shortcut string like "cmd+shift+e" into a display string like "⌘ ⇧ E".
+ */
+export function renderShortcut(shortcut?: string): string | undefined {
+  if (!shortcut) return undefined;
+  const parts = shortcut.toLowerCase().split("+");
+  const key = parts.pop()!;
+  const modifiers = parts.map((m) => MODIFIER_SYMBOLS[m] ?? m);
+  return [...modifiers, key.toUpperCase()].join(" ");
+}

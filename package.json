@@ -40,19 +40,6 @@
       "type": "textfield",
       "default": "",
       "required": false
-    },
-    {
-      "name": "terminalApp",
-      "title": "Terminal App",
-      "description": "Which terminal to open project folders in",
-      "type": "dropdown",
-      "required": false,
-      "default": "terminal",
-      "data": [
-        { "title": "Terminal.app", "value": "terminal" },
-        { "title": "iTerm2", "value": "iterm" },
-        { "title": "Warp", "value": "warp" }
-      ]
     }
   ],
   "dependencies": {

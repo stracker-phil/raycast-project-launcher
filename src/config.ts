@@ -88,7 +88,7 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
 // App shorthand expansion
 // ---------------------------------------------------------------------------
 
-const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "claude"]);
+const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "repoBrowser", "claude"]);
 
 function isAppShorthand(item: AppItem): item is AppShorthand {
   return typeof item === "string" && APP_SHORTHANDS.has(item);
@@ -99,6 +99,7 @@ function expandAppShorthand(
   p: ExtensionPreferences,
   isGitRepo: boolean,
   url?: string,
+  repoUrl?: string,
   metaEditor?: string,
 ): ResolvedApp | null {
   switch (shorthand) {
@@ -112,6 +113,7 @@ function expandAppShorthand(
     case "terminal":
       return {
         label: "Open Terminal",
+        command: "pwd",
         icon: "Terminal",
         shortcut: "cmd+t",
       };
@@ -127,8 +129,17 @@ function expandAppShorthand(
       if (!url) return null;
       return {
         label: "Open in Browser",
+        url,
         icon: "Globe",
         shortcut: "cmd+b",
+      };
+    case "repoBrowser":
+      if (!repoUrl) return null;
+      return {
+        label: "Open Repository",
+        url: repoUrl,
+        icon: "Link",
+        shortcut: "cmd+r",
       };
     case "claude":
       return {
@@ -150,6 +161,7 @@ function resolveApps(
   isGitRepo: boolean,
   projectPath: string,
   url?: string,
+  repoUrl?: string,
   metaEditor?: string,
 ): ResolvedApp[] {
   if (!items || !Array.isArray(items) || items.length === 0) return [];
@@ -159,7 +171,7 @@ function resolveApps(
     // Skip unknown string entries (e.g. removed shorthands)
     if (typeof item === "string" && !isAppShorthand(item)) continue;
     if (isAppShorthand(item)) {
-      const expanded = expandAppShorthand(item, p, isGitRepo, url, metaEditor);
+      const expanded = expandAppShorthand(item, p, isGitRepo, url, repoUrl, metaEditor);
       if (expanded) resolved.push(expanded);
     } else {
       // Full app entry object
@@ -227,6 +239,7 @@ export function resolveConfig(project: Project): ResolvedConfig {
     fileConfig?.env && Object.keys(fileConfig.env).length > 0 ? fileConfig.env : undefined;
 
   const url = fileConfig?.meta?.url || undefined;
+  const repoUrl = fileConfig?.meta?.repoUrl || undefined;
 
   return {
     name: fileConfig?.name || basename(project.path),
@@ -235,10 +248,11 @@ export function resolveConfig(project: Project): ResolvedConfig {
       color: fileConfig?.meta?.color || "Blue",
       tag: fileConfig?.meta?.tag || undefined,
       url,
+      repoUrl,
       notes: fileConfig?.meta?.notes || undefined,
     },
     env,
-    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url, fileConfig?.meta?.editor),
+    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url, repoUrl, fileConfig?.meta?.editor),
     scripts: resolveScripts(fileConfig?.scripts, project.path, url),
     isGitRepo,
     git: isGitRepo ? resolveGitInfo(project.path) : undefined,

@@ -1,4 +1,4 @@
-import { getPreferenceValues, showToast, Toast, open, trash } from "@raycast/api";
+import { getPreferenceValues, showToast, Toast, open, trash, closeMainWindow } from "@raycast/api";
 import { execSync } from "child_process";
 import { existsSync } from "fs";
 import { ExtensionPreferences, Project, ResolvedApp, ResolvedConfig } from "./types";
@@ -24,33 +24,17 @@ export async function launchApp(
   app: ResolvedApp,
 ): Promise<void> {
   try {
+    await closeMainWindow();
+
     if (app.app) {
-      // macOS app launch
       execSync(`open -a "${app.app}" "${project.path}"`, { timeout: 5000 });
-      await showToast(Toast.Style.Success, `Opened ${config.name} in ${app.app}`);
-      return;
-    }
-
-    if (app.command) {
-      // Interactive terminal session
+    } else if (app.command) {
       await openTerminalWithCommand(project, config, app.command);
-      await showToast(Toast.Style.Success, `Launched ${app.label}`);
-      return;
+    } else if (app.url) {
+      await open(app.url);
     }
 
-    if (app.icon === "Terminal") {
-      // Terminal shorthand (just cd + env, no command)
-      await openTerminalWithCommand(project, config, undefined);
-      await showToast(Toast.Style.Success, `Opened terminal in ${config.name}`);
-      return;
-    }
-
-    if (app.icon === "Globe") {
-      // Browser shorthand
-      if (config.meta.url) {
-        await open(config.meta.url);
-      }
-    }
+    await showToast(Toast.Style.Success, `Launched ${app.label}`);
   } catch (error) {
     await showToast(Toast.Style.Failure, `Failed: ${app.label}`, String(error));
   }
@@ -61,16 +45,18 @@ export async function launchApp(
  */
 export async function openConfigFile(project: Project, config: ResolvedConfig): Promise<void> {
   const { configEditor } = prefs();
-  // Find the editor app from the resolved apps (first app with an `app` field)
   const editorApp = config.apps.find((a) => a.app)?.app;
   const app = configEditor || editorApp || "Sublime Text";
   const path = configPath(project);
 
   try {
+    await closeMainWindow();
     switch (app.toLowerCase()) {
       case "subl":
       case "sublime text":
-        execSync(`"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl" "${path}"`, { timeout: 5000 });
+        execSync(`"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl" "${path}"`, {
+          timeout: 5000,
+        });
         break;
 
       default:
@@ -135,42 +121,25 @@ async function openTerminalWithCommand(
   config: ResolvedConfig,
   command: string | undefined,
 ): Promise<void> {
-  const { terminalApp } = prefs();
   const envExports = buildEnvExports(config.env);
-  const cdPart = `cd ${escapeForShell(project.path)}`;
-  const fullCommand = command
-    ? `${envExports}${cdPart}; ${command}`
-    : `${envExports}${cdPart}`;
+  const cdPart = `cdir ${escapeForShell(project.path)}`;
+  const fullCommand = command ? `${envExports}${cdPart}; ${command}` : `${envExports}${cdPart}`;
 
-  switch (terminalApp) {
-    case "iterm":
-      execSync(
-        `osascript -e 'tell application "iTerm2"
-          activate
-          set newWindow to (create window with default profile)
-          tell current session of newWindow
-            write text "${escapeForAppleScript(fullCommand)}"
-          end tell
-        end tell'`,
-        { timeout: 5000 },
-      );
-      break;
-
-    case "warp":
-      execSync(`open -a "Warp" "${project.path}"`, { timeout: 5000 });
-      break;
-
-    case "terminal":
-    default:
-      execSync(
-        `osascript -e 'tell application "Terminal"
-          activate
+  execSync(
+    `osascript -e '
+      set wasRunning to application "Terminal" is running
+      tell application "Terminal"
+        if wasRunning then
           do script "${escapeForAppleScript(fullCommand)}"
-        end tell'`,
-        { timeout: 5000 },
-      );
-      break;
-  }
+        else
+          activate
+          delay 0.1
+          do script "${escapeForAppleScript(fullCommand)}" in front window
+        end if
+        activate
+      end tell'`,
+    { timeout: 5000 },
+  );
 }
 
 // ---------------------------------------------------------------------------

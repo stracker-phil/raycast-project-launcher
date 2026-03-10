@@ -53,23 +53,17 @@ export default function ListProjectsCommand(
   }>({ items: [], lastOpenedId: undefined, isLoading: true });
   const [directMatch, setDirectMatch] = useState<ProjectWithConfig | null>(null);
   const [selectedTag, setSelectedTag] = useState<string>("all");
-  // Deferred selection: set one render after items appear so Raycast's native
-  // layer has registered the items before we ask it to select one.
   const [selection, setSelection] = useState<string | undefined>(undefined);
   const { push } = useNavigation();
 
   const { items, lastOpenedId, isLoading } = listState;
 
-  // Deferred selection: Raycast needs ~50ms to register items before
-  // selectedItemId takes effect.
   useEffect(() => {
     if (items.length > 0 && lastOpenedId) {
       setTimeout(() => setSelection(lastOpenedId), 50);
     }
   }, [items.length, lastOpenedId]);
 
-  // Load projects: try cache first for instant render, then resolve fresh
-  // configs in the background (only updates cache, never replaces items).
   useEffect(() => {
     (async () => {
       const [loaded, storedLastId, cachedConfigs] = await Promise.all([
@@ -78,8 +72,6 @@ export default function ListProjectsCommand(
         loadConfigCache(),
       ]);
 
-      // Try to build list from cache (instant, no file I/O).
-      // If the cache is stale/corrupt, discard it and resolve fresh.
       let items: ProjectWithConfig[];
       try {
         const hasCachedAll = loaded.every((p) => cachedConfigs[p.id]);
@@ -127,7 +119,6 @@ export default function ListProjectsCommand(
     })();
   }, []);
 
-  /** Full refresh from disk (used by edit/delete actions). */
   async function refresh() {
     setListState((s) => ({ ...s, isLoading: true }));
     const loaded = await loadProjects();
@@ -146,7 +137,6 @@ export default function ListProjectsCommand(
     setListState((s) => ({ ...s, items: resolved, isLoading: false }));
   }
 
-  // Deep link: go directly to project actions
   if (directMatch) {
     return (
       <ProjectActions
@@ -157,18 +147,15 @@ export default function ListProjectsCommand(
     );
   }
 
-  // Collect all tags for the dropdown (from unfiltered items)
   const allTags = [...new Set(items.map((item) => item.config.meta.tag).filter(Boolean) as string[])].sort();
   const hasUntagged = items.some((item) => !item.config.meta.tag);
 
-  // Filter by selected tag
   const filteredItems = selectedTag === "all"
     ? items
     : selectedTag === "untagged"
       ? items.filter((item) => !item.config.meta.tag)
       : items.filter((item) => item.config.meta.tag === selectedTag);
 
-  // Group filtered items by tag
   const tagged = new Map<string, ProjectWithConfig[]>();
   const untagged: ProjectWithConfig[] = [];
 
@@ -225,10 +212,15 @@ export default function ListProjectsCommand(
                 </List.Item.Detail.Metadata.TagList>
               </>
             )}
-            {config.meta.url && (
+            {(config.meta.url || config.meta.repoUrl) && (
               <>
                 <List.Item.Detail.Metadata.Separator />
-                <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                {config.meta.url && (
+                  <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                )}
+                {config.meta.repoUrl && (
+                  <List.Item.Detail.Metadata.Link title="Repository" text={config.meta.repoUrl} target={config.meta.repoUrl} />
+                )}
               </>
             )}
             {config.apps.length > 0 && (
@@ -239,7 +231,7 @@ export default function ListProjectsCommand(
                   <List.Item.Detail.Metadata.Label
                     key={app.label}
                     title={`  ${app.label}`}
-                    text={app.app || app.command || ""}
+                    text={app.app || app.command || app.url || ""}
                   />
                 ))}
               </>

@@ -4,7 +4,7 @@ import { basename } from "path";
 import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
 import { launchApp, openConfigFile, runScript } from "./actions";
-import { parseShortcut } from "./shortcuts";
+import { parseShortcut, renderShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 
 interface ProjectActionsProps {
@@ -17,6 +17,7 @@ interface ActionDetail {
   type: string;
   app?: string;
   command?: string;
+  url?: string;
   shortcutLabel?: string;
   markdown?: string;
 }
@@ -39,7 +40,6 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
 
   const env = config.env;
 
-  // Apps section
   for (const app of config.apps) {
     const iconSource = Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2;
     const iconColor = app.color ? (Color[app.color as keyof typeof Color] ?? undefined) : undefined;
@@ -53,7 +53,8 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         type: "App Launcher",
         app: app.app,
         command: app.command,
-        shortcutLabel: app.shortcut,
+        url: app.url,
+        shortcutLabel: renderShortcut(app.shortcut),
       },
       onAction: () => launchApp(project, config, app),
     });
@@ -74,19 +75,19 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       detail: {
         type: "Background Script",
         command: script.command,
-        shortcutLabel: script.shortcut,
+        shortcutLabel: renderShortcut(script.shortcut),
       },
       onAction: () => runScript(project, config, script.label, script.command),
     });
   }
 
-  // Manage section
   actions.push({
     id: "edit-project",
     title: "Edit Project",
     icon: { source: Icon.Pencil },
     section: "Manage",
-    detail: { type: "Manage" },
+    shortcut: { modifiers: ["cmd"], key: "e" },
+    detail: { type: "Manage", shortcutLabel: renderShortcut("cmd+e") },
     onAction: () =>
       push(
         <AddProjectCommand
@@ -104,7 +105,9 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     title: "Edit Config File",
     icon: { source: Icon.Document },
     section: "Manage",
+    shortcut: { modifiers: ["cmd", "shift"], key: "e" },
     detail: {
+      shortcutLabel: renderShortcut("cmd+shift+e"),
       type: "Manage",
       markdown: [
         "## Apps",
@@ -143,7 +146,6 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     onAction: () => openConfigFile(project, config),
   });
 
-  // Group by section
   const sections = new Map<string, ActionItem[]>();
   for (const a of actions) {
     const group = sections.get(a.section) ?? [];
@@ -163,6 +165,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
             <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
             {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
             {detail.command && <List.Item.Detail.Metadata.Label title="Command" text={detail.command} />}
+            {detail.url && <List.Item.Detail.Metadata.Label title="URL" text={detail.url} />}
             {detail.shortcutLabel && (
               <List.Item.Detail.Metadata.Label title="Shortcut" text={detail.shortcutLabel} />
             )}
@@ -218,10 +221,15 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                       </List.Item.Detail.Metadata.TagList>
                     </>
                   )}
-                  {config.meta.url && (
+                  {(config.meta.url || config.meta.repoUrl) && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                      {config.meta.url && (
+                        <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                      )}
+                      {config.meta.repoUrl && (
+                        <List.Item.Detail.Metadata.Link title="Repository" text={config.meta.repoUrl} target={config.meta.repoUrl} />
+                      )}
                     </>
                   )}
                   {env && Object.keys(env).length > 0 && (

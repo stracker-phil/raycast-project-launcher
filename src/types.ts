@@ -21,6 +21,7 @@ export interface MetaConfig {
   color?: string;
   tag?: string;
   url?: string;
+  repoUrl?: string;
   notes?: string;
   editor?: string;
 }
@@ -33,18 +34,15 @@ export interface MetaConfig {
  */
 export interface AppEntry {
   label: string;
-  /** macOS app name — launched via `open -a` */
   app?: string;
-  /** Shell command — run in an interactive terminal session */
   command?: string;
   icon?: string;
   color?: string;
-  /** Keyboard shortcut, e.g. "cmd+k" or "cmd+shift+k" */
   shortcut?: string;
 }
 
 /** Predefined app shorthands that expand using preferences / auto-detection. */
-export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "claude";
+export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "repoBrowser" | "claude";
 export type AppItem = AppShorthand | AppEntry;
 
 /**
@@ -56,7 +54,6 @@ export interface ScriptEntry {
   command: string;
   icon?: string;
   color?: string;
-  /** Keyboard shortcut, e.g. "cmd+k" or "cmd+shift+k" */
   shortcut?: string;
 }
 
@@ -79,10 +76,9 @@ export interface ProjectFileConfig {
 
 export interface ResolvedApp {
   label: string;
-  /** For `open -a` style launches */
   app?: string;
-  /** For interactive terminal launches */
   command?: string;
+  url?: string;
   icon: string;
   color?: string;
   shortcut?: string;
@@ -103,6 +99,7 @@ export interface ResolvedConfig {
     color: string;
     tag?: string;
     url?: string;
+    repoUrl?: string;
     notes?: string;
   };
   env?: Record<string, string>;
@@ -185,6 +182,5 @@ export const PROJECT_COLORS = [
 export interface ExtensionPreferences {
   defaultEditor: string;
   configEditor: string;
-  terminalApp: "terminal" | "iterm" | "warp";
   gitClient: string;
 }
