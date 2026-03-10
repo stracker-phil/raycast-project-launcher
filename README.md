@@ -12,6 +12,10 @@ A personal Raycast extension to manage and launch dev projects. Stop forgetting 
 - **Action detail panel** — preview commands, see execution type and shortcuts before running
 - **Deep links & quicklinks** — jump directly to a project's action list
 
+## Sample 
+
+![Project launcher demonstration](assets/ui-demo.gif)
+
 ## Setup
 
 1. Clone or copy this folder somewhere permanent
