@@ -9,10 +9,11 @@ Raycast extension for managing and launching dev projects.
 ## Structure
 - `src/list-projects.tsx` — Main list view, groups projects by tag, tag filter dropdown
 - `src/project-actions.tsx` — Per-project action list with Info section (opened via Enter)
-- `src/add-project.tsx` — Add/edit project form (path + meta fields)
+- `src/add-project.tsx` — Add/edit project form (path + meta fields, auto-detects existing config)
 - `src/actions.ts` — App launchers, script runners, terminal helpers
 - `src/config.ts` — Reads `.project-launcher.json`, expands shorthands, resolves config
 - `src/storage.ts` — LocalStorage CRUD (stores only path)
+- `src/shortcuts.ts` — Keyboard shortcut parsing (`parseShortcut`) and display rendering (`renderShortcut`)
 - `src/types.ts` — Project, ProjectFileConfig, ResolvedConfig, preferences
 
 ## ADRs
@@ -33,16 +34,18 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 ## Key concepts
 - LocalStorage only holds `id`, `path`, `createdAt` (minimal registration data)
 - All project details live in `.project-launcher.json` in the project root
-- Config structure: `name`, `meta` (icon/color/tag/url/notes), `env`, `apps[]`, `scripts[]`
+- Config structure: `name`, `meta` (icon/color/tag/url/repoUrl/notes/editor), `env`, `apps[]`, `scripts[]`
 - `apps[]` — interactive launchers (open macOS app via `app` field, or terminal session via `command` field)
 - `scripts[]` — background shell commands (execSync, no terminal)
-- App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"` expand via preferences
+- App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
+- `meta.editor` overrides the global default editor for a specific project
 - Variable substitution: `${dir}` (project path), `${url}` (meta.url) in commands
 - Git repo auto-detection (shows git shorthand only for repos)
 - Env vars from config are injected into all commands and terminal sessions
-- Project action view has Info section (project name, path, tag, git status, url, env vars)
+- Project action view has Info section (project name, path, tag, git status, url, repoUrl, env vars)
 - Keyboard shortcuts work in both project list and project action views
 - Form fields use smart dropdowns: tag selector with existing tags + "New Tag", icon selector with curated list + "Custom Icon"
+- Adding a project with an existing `.project-launcher.json` auto-shows "Import existing configuration" checkbox — when checked, config file is preserved as-is
 
 ## Commands
 - `npm run dev` — develop with hot reload
