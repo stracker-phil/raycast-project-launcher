@@ -41,6 +41,18 @@ export function readConfig(projectPath: string): ProjectFileConfig | null {
 }
 
 /**
+ * Collect all unique tags from project config files.
+ */
+export function readAllTags(projects: Project[]): string[] {
+  const tags = new Set<string>();
+  for (const p of projects) {
+    const config = readConfig(p.path);
+    if (config?.meta?.tag) tags.add(config.meta.tag);
+  }
+  return [...tags].sort();
+}
+
+/**
  * Write the config file, merging with existing content.
  */
 export function writeConfig(projectPath: string, updates: Partial<ProjectFileConfig>): void {
@@ -49,7 +61,7 @@ export function writeConfig(projectPath: string, updates: Partial<ProjectFileCon
     name: basename(projectPath),
     meta: { icon: "Folder", color: "Blue" },
     env: {},
-    apps: ["editor", "terminal", "finder"],
+    apps: ["editor", "terminal"],
     scripts: [],
   };
   const merged = { ...defaults, ...updates };
@@ -76,7 +88,7 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
 // App shorthand expansion
 // ---------------------------------------------------------------------------
 
-const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "finder", "claude"]);
+const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "claude"]);
 
 function isAppShorthand(item: AppItem): item is AppShorthand {
   return typeof item === "string" && APP_SHORTHANDS.has(item);
@@ -91,7 +103,7 @@ function expandAppShorthand(
   switch (shorthand) {
     case "editor":
       return {
-        label: `Open in ${p.defaultEditor || "PhpStorm"}`,
+        label: `Edit Code`,
         app: p.defaultEditor || "PhpStorm",
         icon: "Code",
         shortcut: "cmd+o",
@@ -116,12 +128,6 @@ function expandAppShorthand(
         label: "Open in Browser",
         icon: "Globe",
         shortcut: "cmd+b",
-      };
-    case "finder":
-      return {
-        label: "Open in Finder",
-        icon: "Finder",
-        shortcut: "cmd+f",
       };
     case "claude":
       return {
@@ -148,6 +154,8 @@ function resolveApps(
 
   const resolved: ResolvedApp[] = [];
   for (const item of items) {
+    // Skip unknown string entries (e.g. removed shorthands)
+    if (typeof item === "string" && !isAppShorthand(item)) continue;
     if (isAppShorthand(item)) {
       const expanded = expandAppShorthand(item, p, isGitRepo, url);
       if (expanded) resolved.push(expanded);
@@ -223,6 +231,7 @@ export function resolveConfig(project: Project): ResolvedConfig {
     meta: {
       icon: fileConfig?.meta?.icon || "Folder",
       color: fileConfig?.meta?.color || "Blue",
+      tag: fileConfig?.meta?.tag || undefined,
       url,
       notes: fileConfig?.meta?.notes || undefined,
     },

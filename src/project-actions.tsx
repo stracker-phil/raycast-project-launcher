@@ -1,4 +1,6 @@
 import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
+import { execSync } from "child_process";
+import { basename } from "path";
 import { Project, ResolvedConfig } from "./types";
 import { launchApp, openConfigFile, runScript } from "./actions";
 import { parseShortcut } from "./shortcuts";
@@ -30,6 +32,7 @@ interface ActionItem {
 
 export default function ProjectActions({ project, config, onRefresh }: ProjectActionsProps) {
   const { push, pop } = useNavigation();
+  const name = config.name || basename(project.path);
 
   const actions: ActionItem[] = [];
 
@@ -105,7 +108,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       markdown: [
         "## Apps",
         "Shorthands: `editor`, `terminal`,",
-        "`git`, `browser`, `finder`",
+        "`git`, `browser`",
         "",
         "Full entry:",
         "```json",
@@ -183,7 +186,85 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
   }
 
   return (
-    <List navigationTitle={config.name} searchBarPlaceholder="Search actions…" isShowingDetail>
+    <List navigationTitle={name} searchBarPlaceholder={`${name} — Search actions…`} isShowingDetail>
+      <List.Section title="Info">
+        <List.Item
+          id="info-project"
+          title={name}
+          icon={{ source: Icon[config.meta.icon as keyof typeof Icon] ?? Icon.Folder, tintColor: Color[config.meta.color as keyof typeof Color] ?? Color.Blue }}
+          detail={
+            <List.Item.Detail
+              metadata={
+                <List.Item.Detail.Metadata>
+                  <List.Item.Detail.Metadata.Label title="Path" text={project.path} />
+                  {config.meta.tag && (
+                    <List.Item.Detail.Metadata.TagList title="Tag">
+                      <List.Item.Detail.Metadata.TagList.Item text={config.meta.tag} color={Color.Blue} />
+                    </List.Item.Detail.Metadata.TagList>
+                  )}
+                  {config.isGitRepo && config.git && (
+                    <>
+                      <List.Item.Detail.Metadata.Separator />
+                      <List.Item.Detail.Metadata.Label title="Branch" text={config.git.branch} />
+                      <List.Item.Detail.Metadata.TagList title="Status">
+                        <List.Item.Detail.Metadata.TagList.Item
+                          text={config.git.dirty ? "Uncommitted Changes" : "Clean"}
+                          color={config.git.dirty ? Color.Orange : Color.Green}
+                        />
+                      </List.Item.Detail.Metadata.TagList>
+                    </>
+                  )}
+                  {config.meta.url && (
+                    <>
+                      <List.Item.Detail.Metadata.Separator />
+                      <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                    </>
+                  )}
+                  {env && Object.keys(env).length > 0 && (
+                    <>
+                      <List.Item.Detail.Metadata.Separator />
+                      <List.Item.Detail.Metadata.Label title="Environment" />
+                      {Object.entries(env).map(([key, value]) => (
+                        <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
+                      ))}
+                    </>
+                  )}
+                  {config.meta.notes && (
+                    <>
+                      <List.Item.Detail.Metadata.Separator />
+                      <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
+                    </>
+                  )}
+                </List.Item.Detail.Metadata>
+              }
+            />
+          }
+          actions={
+            <ActionPanel>
+              <Action
+                title="Open in Finder"
+                icon={Icon.Finder}
+                onAction={() => {
+                  execSync(`open "${project.path}"`, { timeout: 5000 });
+                }}
+              />
+              <ActionPanel.Section title="Shortcuts">
+                {actions
+                  .filter((a) => a.shortcut)
+                  .map((a) => (
+                    <Action
+                      key={a.id}
+                      title={a.title}
+                      icon={a.icon}
+                      shortcut={a.shortcut}
+                      onAction={a.onAction}
+                    />
+                  ))}
+              </ActionPanel.Section>
+            </ActionPanel>
+          }
+        />
+      </List.Section>
       {[...sections.entries()].map(([section, items]) => (
         <List.Section key={section} title={section}>
           {items.map((item) => (
@@ -195,13 +276,28 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
               actions={
                 <ActionPanel>
                   <Action title={item.title} icon={item.icon} shortcut={item.shortcut} onAction={item.onAction} />
-                  <Action.CreateQuicklink
-                    shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
-                    quicklink={{
-                      name: `Project: ${config.name}`,
-                      link: projectDeeplink(project.id),
-                    }}
-                  />
+                  <ActionPanel.Section title="Shortcuts">
+                    {actions
+                      .filter((a) => a.shortcut && a.id !== item.id)
+                      .map((a) => (
+                        <Action
+                          key={a.id}
+                          title={a.title}
+                          icon={a.icon}
+                          shortcut={a.shortcut}
+                          onAction={a.onAction}
+                        />
+                      ))}
+                  </ActionPanel.Section>
+                  <ActionPanel.Section title="Manage">
+                    <Action.CreateQuicklink
+                      shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+                      quicklink={{
+                        name: `Project: ${name}`,
+                        link: projectDeeplink(project.id),
+                      }}
+                    />
+                  </ActionPanel.Section>
                 </ActionPanel>
               }
             />

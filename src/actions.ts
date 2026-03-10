@@ -38,12 +38,6 @@ export async function launchApp(
       return;
     }
 
-    if (app.icon === "Finder") {
-      // Finder shorthand
-      execSync(`open "${project.path}"`, { timeout: 5000 });
-      return;
-    }
-
     if (app.icon === "Terminal") {
       // Terminal shorthand (just cd + env, no command)
       await openTerminalWithCommand(project, config, undefined);

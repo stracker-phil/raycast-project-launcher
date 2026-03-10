@@ -21,6 +21,7 @@ import {
   saveConfigCache,
   setLastOpenedProjectId,
 } from "./storage";
+import { basename } from "path";
 import { resolveConfig } from "./config";
 import { launchApp, openConfigFile, trashConfigFile } from "./actions";
 import { parseShortcut } from "./shortcuts";
@@ -34,6 +35,10 @@ interface ProjectWithConfig {
 
 interface LaunchContext {
   projectId: string;
+}
+
+function projectName(config: ResolvedConfig, project: Project): string {
+  return config.name || basename(project.path);
 }
 
 export default function ListProjectsCommand(
@@ -72,13 +77,29 @@ export default function ListProjectsCommand(
         loadConfigCache(),
       ]);
 
-      // Try to build list from cache (instant, no file I/O)
-      const hasCachedAll = loaded.every((p) => cachedConfigs[p.id]);
-      const items = hasCachedAll
-        ? loaded.map((project) => ({ project, config: cachedConfigs[project.id] }))
-        : loaded.map((project) => ({ project, config: resolveConfig(project) }));
+      // Try to build list from cache (instant, no file I/O).
+      // If the cache is stale/corrupt, discard it and resolve fresh.
+      let items: ProjectWithConfig[];
+      try {
+        const hasCachedAll = loaded.every((p) => cachedConfigs[p.id]);
+        items = hasCachedAll
+          ? loaded.map((project) => {
+              const config = cachedConfigs[project.id];
+              if (!config?.name && !config?.meta) throw new Error("stale cache");
+              return { project, config };
+            })
+          : loaded.map((project) => ({ project, config: resolveConfig(project) }));
+      } catch {
+        // Cache is unusable — resolve everything fresh and replace cache now
+        items = loaded.map((project) => ({ project, config: resolveConfig(project) }));
+        const freshCache: Record<string, ResolvedConfig> = {};
+        for (const item of items) {
+          freshCache[item.project.id] = item.config;
+        }
+        saveConfigCache(freshCache);
+      }
 
-      items.sort((a, b) => a.config.name.localeCompare(b.config.name));
+      items.sort((a, b) => projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)));
 
       if (contextId) {
         const match = items.find((item) => item.project.id === contextId);
@@ -120,7 +141,7 @@ export default function ListProjectsCommand(
     }
     saveConfigCache(newCache);
 
-    resolved.sort((a, b) => a.config.name.localeCompare(b.config.name));
+    resolved.sort((a, b) => projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)));
     setListState((s) => ({ ...s, items: resolved, isLoading: false }));
   }
 
@@ -136,25 +157,25 @@ export default function ListProjectsCommand(
   }
 
   // Collect all tags for the dropdown (from unfiltered items)
-  const allTags = [...new Set(items.map((item) => item.project.tag).filter(Boolean) as string[])].sort();
-  const hasUntagged = items.some((item) => !item.project.tag);
+  const allTags = [...new Set(items.map((item) => item.config.meta.tag).filter(Boolean) as string[])].sort();
+  const hasUntagged = items.some((item) => !item.config.meta.tag);
 
   // Filter by selected tag
   const filteredItems = selectedTag === "all"
     ? items
     : selectedTag === "untagged"
-      ? items.filter((item) => !item.project.tag)
-      : items.filter((item) => item.project.tag === selectedTag);
+      ? items.filter((item) => !item.config.meta.tag)
+      : items.filter((item) => item.config.meta.tag === selectedTag);
 
   // Group filtered items by tag
   const tagged = new Map<string, ProjectWithConfig[]>();
   const untagged: ProjectWithConfig[] = [];
 
   for (const item of filteredItems) {
-    if (item.project.tag) {
-      const group = tagged.get(item.project.tag) ?? [];
+    if (item.config.meta.tag) {
+      const group = tagged.get(item.config.meta.tag) ?? [];
       group.push(item);
-      tagged.set(item.project.tag, group);
+      tagged.set(item.config.meta.tag, group);
     } else {
       untagged.push(item);
     }
@@ -183,9 +204,9 @@ export default function ListProjectsCommand(
         metadata={
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Path" text={project.path} />
-            {project.tag && (
+            {config.meta.tag && (
               <List.Item.Detail.Metadata.TagList title="Tag">
-                <List.Item.Detail.Metadata.TagList.Item text={project.tag} color={Color.Blue} />
+                <List.Item.Detail.Metadata.TagList.Item text={config.meta.tag} color={Color.Blue} />
               </List.Item.Detail.Metadata.TagList>
             )}
             {config.isGitRepo && config.git && (
@@ -255,6 +276,7 @@ export default function ListProjectsCommand(
   }
 
   function projectItem({ project, config }: ProjectWithConfig) {
+    const name = projectName(config, project);
     const iconSource = Icon[config.meta.icon as keyof typeof Icon] ?? Icon.Folder;
     const iconColor = Color[config.meta.color as keyof typeof Color] ?? Color.Blue;
 
@@ -262,7 +284,7 @@ export default function ListProjectsCommand(
       <List.Item
         key={project.id}
         id={project.id}
-        title={config.name}
+        title={name}
         icon={{ source: iconSource, tintColor: iconColor }}
         detail={projectDetail(config, project)}
         actions={
@@ -310,16 +332,34 @@ export default function ListProjectsCommand(
               <Action.CreateQuicklink
                 shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
                 quicklink={{
-                  name: `Project: ${config.name}`,
+                  name: `Project: ${name}`,
                   link: projectDeeplink(project.id),
                 }}
+              />
+              <Action
+                title="Add Project"
+                icon={Icon.Plus}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={() =>
+                  push(
+                    <AddProjectCommand
+                      onSaved={async (newProject) => {
+                        await refresh();
+                        if (newProject) {
+                          const newConfig = resolveConfig(newProject);
+                          push(<ProjectActions project={newProject} config={newConfig} onRefresh={refresh} />);
+                        }
+                      }}
+                    />,
+                  )
+                }
               />
               <Action
                 title="Remove Project"
                 icon={{ source: Icon.Trash, tintColor: Color.Red }}
                 style={Action.Style.Destructive}
                 shortcut={{ modifiers: ["ctrl"], key: "x" }}
-                onAction={() => handleDelete(project, config.name)}
+                onAction={() => handleDelete(project, name)}
               />
             </ActionPanel.Section>
           </ActionPanel>
@@ -356,7 +396,19 @@ export default function ListProjectsCommand(
           <Action
             title="Add Project"
             icon={Icon.Plus}
-            onAction={() => push(<AddProjectCommand onSaved={refresh} />)}
+            onAction={() =>
+              push(
+                <AddProjectCommand
+                  onSaved={async (newProject) => {
+                    await refresh();
+                    if (newProject) {
+                      const newConfig = resolveConfig(newProject);
+                      push(<ProjectActions project={newProject} config={newConfig} onRefresh={refresh} />);
+                    }
+                  }}
+                />,
+              )
+            }
           />
         </ActionPanel>
       }

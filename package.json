@@ -10,16 +10,9 @@
   "commands": [
     {
       "name": "list-projects",
-      "title": "List Projects",
+      "title": "Projects",
       "subtitle": "Dev Project Launcher",
-      "description": "Browse all your dev projects and launch actions",
-      "mode": "view"
-    },
-    {
-      "name": "add-project",
-      "title": "Add Project",
-      "subtitle": "Dev Project Launcher",
-      "description": "Register a new dev project",
+      "description": "Browse, manage, and launch your dev projects",
       "mode": "view"
     }
   ],

@@ -8,15 +8,21 @@ import {
   useNavigation,
   Icon,
 } from "@raycast/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Project, PROJECT_ICONS, PROJECT_COLORS } from "./types";
-import { addProject, updateProject, generateId } from "./storage";
-import { readConfig, writeConfig, resolveConfig } from "./config";
+import { addProject, updateProject, generateId, loadProjects } from "./storage";
+import { readConfig, writeConfig, resolveConfig, readAllTags } from "./config";
 import { openConfigFile } from "./actions";
+
+const NEW_TAG_VALUE = "__new__";
+const NO_TAG_VALUE = "";
+const CUSTOM_ICON_VALUE = "__custom__";
+
+const PROJECT_ICONS_SET = new Set<string>(PROJECT_ICONS);
 
 interface AddProjectProps {
   editProject?: Project;
-  onSaved?: () => void;
+  onSaved?: (project?: Project) => void;
 }
 
 export default function AddProjectCommand(props: AddProjectProps) {
@@ -27,12 +33,25 @@ export default function AddProjectCommand(props: AddProjectProps) {
   const fileConfig = isEditing ? readConfig(editProject.path) : null;
 
   const [pathError, setPathError] = useState<string | undefined>();
+  const [existingTags, setExistingTags] = useState<string[] | null>(null);
+  const tagsLoaded = existingTags !== null;
+  const [tagSelection, setTagSelection] = useState<string>(() => fileConfig?.meta?.tag ?? NO_TAG_VALUE);
+  const [customTag, setCustomTag] = useState("");
+
+  const configIcon = fileConfig?.meta?.icon ?? "Folder";
+  const isCustomIcon = configIcon !== "Folder" && !PROJECT_ICONS_SET.has(configIcon);
+  const [iconSelection, setIconSelection] = useState<string>(isCustomIcon ? CUSTOM_ICON_VALUE : configIcon);
+  const [customIcon, setCustomIcon] = useState(isCustomIcon ? configIcon : "");
+
+  useEffect(() => {
+    loadProjects().then((projects) => {
+      setExistingTags(readAllTags(projects));
+    });
+  }, []);
 
   async function handleSubmit(values: {
     path: string[];
-    tag: string;
     name: string;
-    icon: string;
     color: string;
     notes: string;
   }) {
@@ -42,20 +61,24 @@ export default function AddProjectCommand(props: AddProjectProps) {
     }
 
     const projectPath = isEditing ? editProject.path : values.path[0];
+    const tag = tagSelection === NEW_TAG_VALUE ? customTag.trim() : tagSelection === NO_TAG_VALUE ? undefined : tagSelection;
+    const icon = iconSelection === CUSTOM_ICON_VALUE ? (customIcon.trim() || "Folder") : iconSelection;
 
     const project: Project = {
       id: editProject?.id ?? generateId(),
       path: projectPath,
-      tag: values.tag.trim() || undefined,
       createdAt: editProject?.createdAt ?? new Date().toISOString(),
     };
 
-    // Write form fields to the JSON config
+    // Write form fields to the JSON config, preserving fields not in the form
+    const existingConfig = readConfig(projectPath);
     writeConfig(projectPath, {
       name: values.name.trim() || undefined,
       meta: {
-        icon: values.icon || "Folder",
+        ...existingConfig?.meta,
+        icon: icon,
         color: values.color || "Blue",
+        tag: tag || undefined,
         notes: values.notes.trim() || undefined,
       },
     });
@@ -68,7 +91,7 @@ export default function AddProjectCommand(props: AddProjectProps) {
       await showToast(Toast.Style.Success, "Project added");
     }
 
-    onSaved?.();
+    onSaved?.(project);
     pop();
   }
 
@@ -118,18 +141,39 @@ export default function AddProjectCommand(props: AddProjectProps) {
         info={isEditing ? "From .project-launcher.json" : "Set after adding via config file"}
       />
 
-      <Form.TextField
-        id="tag"
+      <Form.Dropdown
+        id="tagDropdown"
         title="Tag"
-        placeholder="client, hobby, work…"
-        defaultValue={editProject?.tag ?? ""}
+        value={tagSelection}
+        onChange={setTagSelection}
         info="Used to group projects in the list"
-      />
+        isLoading={!tagsLoaded}
+      >
+        <Form.Dropdown.Item title="No Tag" value={NO_TAG_VALUE} icon={Icon.Minus} />
+        {fileConfig?.meta?.tag && !tagsLoaded && (
+          <Form.Dropdown.Item key={fileConfig.meta.tag} title={fileConfig.meta.tag} value={fileConfig.meta.tag} icon={Icon.Tag} />
+        )}
+        {(existingTags ?? []).map((tag) => (
+          <Form.Dropdown.Item key={tag} title={tag} value={tag} icon={Icon.Tag} />
+        ))}
+        <Form.Dropdown.Item title="New Tag…" value={NEW_TAG_VALUE} icon={Icon.Plus} />
+      </Form.Dropdown>
+
+      {tagSelection === NEW_TAG_VALUE && (
+        <Form.TextField
+          id="customTag"
+          title="New Tag"
+          placeholder="client, hobby, work…"
+          value={customTag}
+          onChange={setCustomTag}
+        />
+      )}
 
       <Form.Dropdown
         id="icon"
         title="Icon"
-        defaultValue={fileConfig?.meta?.icon ?? "Folder"}
+        value={iconSelection}
+        onChange={setIconSelection}
       >
         {PROJECT_ICONS.map((name) => (
           <Form.Dropdown.Item
@@ -139,7 +183,19 @@ export default function AddProjectCommand(props: AddProjectProps) {
             icon={{ source: Icon[name as keyof typeof Icon], tintColor: Color.PrimaryText }}
           />
         ))}
+        <Form.Dropdown.Item title="Custom Icon…" value={CUSTOM_ICON_VALUE} icon={Icon.Pencil} />
       </Form.Dropdown>
+
+      {iconSelection === CUSTOM_ICON_VALUE && (
+        <Form.TextField
+          id="customIcon"
+          title="Icon Name"
+          placeholder="Raycast Icon name, e.g. Airplane"
+          value={customIcon}
+          onChange={setCustomIcon}
+          info="Any valid Raycast Icon enum name"
+        />
+      )}
 
       <Form.Dropdown
         id="color"

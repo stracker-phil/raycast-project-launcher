@@ -6,7 +6,6 @@
 export interface Project {
   id: string;
   path: string;
-  tag?: string;
   createdAt: string;
 }
 
@@ -20,6 +19,7 @@ export interface Project {
 export interface MetaConfig {
   icon?: string;
   color?: string;
+  tag?: string;
   url?: string;
   notes?: string;
 }
@@ -43,7 +43,7 @@ export interface AppEntry {
 }
 
 /** Predefined app shorthands that expand using preferences / auto-detection. */
-export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "finder" | "claude";
+export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "claude";
 export type AppItem = AppShorthand | AppEntry;
 
 /**
@@ -100,6 +100,7 @@ export interface ResolvedConfig {
   meta: {
     icon: string;
     color: string;
+    tag?: string;
     url?: string;
     notes?: string;
   };
@@ -137,7 +138,6 @@ export const PROJECT_ICONS = [
   "Gauge",
   "GameController",
   "House",
-  "Heart",
   "Leaf",
   "LightBulb",
   "Link",
@@ -154,7 +154,7 @@ export const PROJECT_ICONS = [
   "Wand",
   "Stars",
   "Layers",
-  "AppWindow",
+  "Window",
   "BulletPoints",
   "Text",
   "Play",
@@ -162,7 +162,6 @@ export const PROJECT_ICONS = [
   "Trash",
   "Power",
   "Tag",
-  "Stars",
   "Repeat",
 ] as const;
 
