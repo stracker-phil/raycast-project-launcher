@@ -99,12 +99,13 @@ function expandAppShorthand(
   p: ExtensionPreferences,
   isGitRepo: boolean,
   url?: string,
+  metaEditor?: string,
 ): ResolvedApp | null {
   switch (shorthand) {
     case "editor":
       return {
         label: `Edit Code`,
-        app: p.defaultEditor || "PhpStorm",
+        app: metaEditor || p.defaultEditor || "PhpStorm",
         icon: "Code",
         shortcut: "cmd+o",
       };
@@ -149,6 +150,7 @@ function resolveApps(
   isGitRepo: boolean,
   projectPath: string,
   url?: string,
+  metaEditor?: string,
 ): ResolvedApp[] {
   if (!items || !Array.isArray(items) || items.length === 0) return [];
 
@@ -157,7 +159,7 @@ function resolveApps(
     // Skip unknown string entries (e.g. removed shorthands)
     if (typeof item === "string" && !isAppShorthand(item)) continue;
     if (isAppShorthand(item)) {
-      const expanded = expandAppShorthand(item, p, isGitRepo, url);
+      const expanded = expandAppShorthand(item, p, isGitRepo, url, metaEditor);
       if (expanded) resolved.push(expanded);
     } else {
       // Full app entry object
@@ -236,7 +238,7 @@ export function resolveConfig(project: Project): ResolvedConfig {
       notes: fileConfig?.meta?.notes || undefined,
     },
     env,
-    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url),
+    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url, fileConfig?.meta?.editor),
     scripts: resolveScripts(fileConfig?.scripts, project.path, url),
     isGitRepo,
     git: isGitRepo ? resolveGitInfo(project.path) : undefined,

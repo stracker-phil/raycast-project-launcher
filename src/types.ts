@@ -22,6 +22,7 @@ export interface MetaConfig {
   tag?: string;
   url?: string;
   notes?: string;
+  editor?: string;
 }
 
 /**
