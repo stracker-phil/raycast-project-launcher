@@ -23,7 +23,7 @@ A personal Raycast extension to manage and launch dev projects. Stop forgetting 
    ```bash
    npm run dev
    ```
-4. Open Raycast — you'll see "List Projects" and "Add Project" commands
+4. Open Raycast — you'll see the "Projects" command
 5. Configure extension preferences (Raycast → Extension Settings):
    - **Default Editor** — app name for the `"editor"` shorthand (e.g. `Cursor`, `PhpStorm`)
    - **Config Editor** — app used to open `.project-launcher.json` files
@@ -151,13 +151,13 @@ It is **not** injected into `open -a` app launches (editor, git client, Finder).
 
 ### Adding a Project
 
-1. Open Raycast → "Add Project"
+1. Open Raycast → "Projects" → press `⌘N`
 2. Pick the project folder, set a name and tag
 3. Edit the `.project-launcher.json` to configure apps and scripts
 
 ### Launching a Project
 
-1. Open Raycast → "List Projects"
+1. Open Raycast → "Projects"
 2. Select a project → press Enter to see all actions
 3. Or use keyboard shortcuts directly from the project list:
 
