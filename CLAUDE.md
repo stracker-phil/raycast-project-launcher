@@ -8,11 +8,11 @@ Raycast extension for managing and launching dev projects.
 
 ## Structure
 - `src/list-projects.tsx` — Main list view, groups projects by tag, tag filter dropdown
-- `src/project-actions.tsx` — Per-project action list (opened via Enter)
-- `src/add-project.tsx` — Add project form (path + tag + meta only)
+- `src/project-actions.tsx` — Per-project action list with Info section (opened via Enter)
+- `src/add-project.tsx` — Add/edit project form (path + meta fields)
 - `src/actions.ts` — App launchers, script runners, terminal helpers
 - `src/config.ts` — Reads `.project-launcher.json`, expands shorthands, resolves config
-- `src/storage.ts` — LocalStorage CRUD (stores only path + tag)
+- `src/storage.ts` — LocalStorage CRUD (stores only path)
 - `src/types.ts` — Project, ProjectFileConfig, ResolvedConfig, preferences
 
 ## ADRs
@@ -25,17 +25,24 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - ADR-013: Structured config with apps[] and scripts[] arrays
 - ADR-014: Configurable keyboard shortcuts (per-item, not positional)
 - ADR-015: Action detail panel (command preview, type, shortcuts, config reference)
+- ADR-016: Config cache for instant list rendering
+- ADR-017: Deferred selection timing (selectedItemId requires 50ms delay)
+- ADR-018: Action view Info section + global keyboard shortcuts
+- ADR-019: Smart form dropdowns (tag selector, custom icon support)
 
 ## Key concepts
-- LocalStorage only holds `id`, `path`, `tag`, `createdAt`
+- LocalStorage only holds `id`, `path`, `createdAt` (minimal registration data)
 - All project details live in `.project-launcher.json` in the project root
-- Config structure: `name`, `meta` (icon/color/url/notes), `env`, `apps[]`, `scripts[]`
+- Config structure: `name`, `meta` (icon/color/tag/url/notes), `env`, `apps[]`, `scripts[]`
 - `apps[]` — interactive launchers (open macOS app via `app` field, or terminal session via `command` field)
 - `scripts[]` — background shell commands (execSync, no terminal)
-- App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"finder"` expand via preferences
+- App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"` expand via preferences
 - Variable substitution: `${dir}` (project path), `${url}` (meta.url) in commands
 - Git repo auto-detection (shows git shorthand only for repos)
 - Env vars from config are injected into all commands and terminal sessions
+- Project action view has Info section (project name, path, tag, git status, url, env vars)
+- Keyboard shortcuts work in both project list and project action views
+- Form fields use smart dropdowns: tag selector with existing tags + "New Tag", icon selector with curated list + "Custom Icon"
 
 ## Commands
 - `npm run dev` — develop with hot reload
