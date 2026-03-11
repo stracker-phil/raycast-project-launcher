@@ -39,7 +39,8 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - `scripts[]` — background shell commands (execSync, no terminal)
 - App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
 - `meta.editor` overrides the global default editor for a specific project
-- Variable substitution: `${dir}` (project path), `${url}` (meta.url) in commands
+- Variable substitution: `${dir}` (project path), `${url}` (meta.url), `~` (home dir) in commands and `args`
+- `apps[]` entries support `args` field to pass a specific file/path to `app` instead of the project directory
 - Git repo auto-detection (shows git shorthand only for repos)
 - Env vars from config are injected into all commands and terminal sessions
 - Project action view has Info section (project name, path, tag, git status, url, repoUrl, env vars)

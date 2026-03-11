@@ -18,7 +18,7 @@ Restructure `.project-launcher.json` into a nested format:
 - **`scripts`** — array of background commands (run via `execSync`, no terminal)
 
 Apps support two launch modes determined by which field is set:
-- `app` field → launched via `open -a "AppName" "projectPath"`
+- `app` field → launched via `open -a "AppName" "projectPath"`. Optional `args` field overrides the project path with a specific file or path.
 - `command` field → opened in a new interactive terminal session with env vars
 
 Scripts always run in the background with no visible terminal.
@@ -27,10 +27,10 @@ Both apps and scripts support per-item `icon`, `color`, and `shortcut` fields.
 
 ## Implementation
 
-- `apps` entries are either string shorthands (`"editor"`, `"terminal"`, `"git"`, `"browser"`, `"finder"`) or full objects with `label`, `app`/`command`, `icon`, `color`, `shortcut`
+- `apps` entries are either string shorthands (`"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"`) or full objects with `label`, `app`/`command`, `args`, `icon`, `color`, `shortcut`
 - String shorthands expand using extension preferences (e.g. `"editor"` → `{ label: "Open in Cursor", app: "Cursor", shortcut: "cmd+o" }`)
 - `scripts` entries are objects with `label`, `command`, `icon`, `color`, `shortcut`
-- Variable substitution: `${dir}` (project path) and `${url}` (`meta.url`) are replaced in all commands
+- Variable substitution: `${dir}` (project path), `${url}` (`meta.url`), and `~` (home directory) are replaced in all commands and `args` fields
 - The UI renders: Apps section → Scripts section → Manage section
 
 ## Rationale

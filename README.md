@@ -56,11 +56,11 @@ Each project's configuration lives in a `.project-launcher.json` file in the pro
   "apps": [
     "editor",
     "terminal",
-    "finder",
     "git",
     "browser",
-    { "label": "Claude Code", "command": "claude", "icon": "Terminal", "shortcut": "cmd+k" },
-    { "label": "Open in Sublime", "app": "Sublime Text", "icon": "Code" }
+    "claude",
+    { "label": "Open in Sublime", "app": "Sublime Text", "icon": "Code" },
+    { "label": "Edit global config", "app": "Sublime Text", "args": "~/.config/settings.json", "icon": "Document" }
   ],
   "scripts": [
     { "label": "Start Services", "command": "docker-compose up -d", "icon": "Play", "color": "Green" },
@@ -100,9 +100,10 @@ Each entry is either a **string shorthand** or a **full object**.
 |-----------|--------|------------------|
 | `"editor"` | Opens project in the default editor (from preferences) | `⌘O` |
 | `"terminal"` | Opens a new terminal window in the project dir with env vars | `⌘T` |
-| `"finder"` | Reveals the project folder in Finder | `⌘F` |
 | `"git"` | Opens the git client (from preferences); hidden if not a git repo | `⌘G` |
 | `"browser"` | Opens `meta.url` in the default browser; hidden if no URL set | `⌘B` |
+| `"repoBrowser"` | Opens `meta.repoUrl` in the default browser; hidden if no repo URL set | `⌘R` |
+| `"claude"` | Opens Claude Code in a terminal session | `⌘C` |
 
 #### Full Object
 
@@ -110,13 +111,14 @@ Each entry is either a **string shorthand** or a **full object**.
 |-------|------|----------|-------------|
 | `label` | `string` | Yes | Display name in the action list |
 | `app` | `string` | — | macOS app name — launched via `open -a` |
+| `args` | `string` | — | File or path to pass to `app` instead of the project directory |
 | `command` | `string` | — | Shell command — run in an interactive terminal session |
 | `icon` | `string` | — | Raycast icon name |
 | `color` | `string` | — | Icon tint color |
 | `shortcut` | `string` | — | Keyboard shortcut (e.g. `"cmd+k"`, `"cmd+shift+l"`) |
 
 Set either `app` or `command`, not both:
-- **`app`**: launches a macOS application with the project path (e.g. `"app": "Cursor"`)
+- **`app`**: launches a macOS application with the project path (e.g. `"app": "Cursor"`). Use `args` to open a specific file instead (e.g. `"args": "~/.config/settings.json"`)
 - **`command`**: opens a new terminal window, `cd`s into the project, exports env vars, and runs the command (e.g. `"command": "claude"`)
 
 ### Scripts Array
@@ -135,12 +137,13 @@ Scripts run via `execSync` in the project directory with env vars injected. They
 
 ### Variable Substitution
 
-All `command` fields (in both apps and scripts) support these variables:
+All `command` and `args` fields support these variables:
 
 | Variable | Expands to |
 |----------|-----------|
 | `${dir}` | Project path (e.g. `/Users/philipp/Projects/my-api`) |
 | `${url}` | Value of `meta.url` |
+| `~` | Home directory (only at start of path, e.g. `~/.config/file.json`) |
 
 ### Environment Variables
 
@@ -170,7 +173,6 @@ It is **not** injected into `open -a` app launches (editor, git client, Finder).
 | Show all actions | `Enter` |
 | Editor (default) | `⌘O` |
 | Terminal | `⌘T` |
-| Finder | `⌘F` |
 | Git client | `⌘G` |
 | Browser | `⌘B` |
 | Edit project | `⌘E` |
