@@ -35,6 +35,7 @@ export interface MetaConfig {
 export interface AppEntry {
   label: string;
   app?: string;
+  args?: string;
   command?: string;
   icon?: string;
   color?: string;
@@ -77,6 +78,7 @@ export interface ProjectFileConfig {
 export interface ResolvedApp {
   label: string;
   app?: string;
+  args?: string;
   command?: string;
   url?: string;
   icon: string;

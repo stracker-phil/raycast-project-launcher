@@ -16,6 +16,7 @@ interface ProjectActionsProps {
 interface ActionDetail {
   type: string;
   app?: string;
+  args?: string;
   command?: string;
   url?: string;
   shortcutLabel?: string;
@@ -52,6 +53,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       detail: {
         type: "App Launcher",
         app: app.app,
+        args: app.args,
         command: app.command,
         url: app.url,
         shortcutLabel: renderShortcut(app.shortcut),
@@ -119,6 +121,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         "{",
         '  "label": "Dev Server",',
         '  "app": "AppName",',
+        '  "args": "${dir}/file.txt",',
         '  "command": "cd ${dir} && npm run dev",',
         '  "icon": "Terminal",',
         '  "color": "Green",',
@@ -126,9 +129,11 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         "}",
         "```",
         "- `app` — open via `open -a`",
+        "- `args` — file/path for `app` (default: project dir)",
         "- `command` — run in terminal",
         "- `${dir}` — project path",
         "- `${url}` — meta.url value",
+        "- `~` — expands to home directory",
         "",
         "## Scripts",
         "Background commands (no terminal):",
@@ -164,6 +169,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
             {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
+            {detail.args && <List.Item.Detail.Metadata.Label title="Args" text={detail.args.replace(homedir(), "~")} />}
             {detail.command && <List.Item.Detail.Metadata.Label title="Command" text={detail.command} />}
             {detail.url && <List.Item.Detail.Metadata.Label title="URL" text={detail.url} />}
             {detail.shortcutLabel && (

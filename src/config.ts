@@ -1,6 +1,7 @@
 import { getPreferenceValues } from "@raycast/api";
 import { execSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import { homedir } from "os";
 import { basename, join } from "path";
 import {
   AppItem,
@@ -81,6 +82,7 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
   if (url) {
     result = result.replace(/\$\{url\}/g, url);
   }
+  result = result.replace(/^~(?=\/|$)/, homedir());
   return result;
 }
 
@@ -183,6 +185,9 @@ function resolveApps(
       };
       if (item.app) {
         app.app = item.app;
+      }
+      if (item.args) {
+        app.args = substituteVars(item.args, projectPath, url);
       }
       if (item.command) {
         app.command = substituteVars(item.command, projectPath, url);

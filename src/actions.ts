@@ -27,7 +27,8 @@ export async function launchApp(
     await closeMainWindow();
 
     if (app.app) {
-      execSync(`open -a "${app.app}" "${project.path}"`, { timeout: 5000 });
+      const target = app.args || project.path;
+      execSync(`open -a "${app.app}" "${target}"`, { timeout: 5000 });
     } else if (app.command) {
       await openTerminalWithCommand(project, config, app.command);
     } else if (app.url) {
