@@ -157,6 +157,7 @@ function projectEnv(config: ResolvedConfig): NodeJS.ProcessEnv {
       "/bin",
       "/usr/sbin",
       "/sbin",
+      "/Users/philipp/File-Catalog/bin",
       process.env.PATH,
     ].join(":"),
     ...config.env,
