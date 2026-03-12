@@ -82,7 +82,7 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
   if (url) {
     result = result.replace(/\$\{url\}/g, url);
   }
-  result = result.replace(/^~(?=\/|$)/, homedir());
+  result = result.replace(/(?<=^|\s|'|")~(?=\/|$)/g, homedir());
   return result;
 }
 
