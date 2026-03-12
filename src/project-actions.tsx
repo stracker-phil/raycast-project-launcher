@@ -260,6 +260,11 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                   execSync(`open "${project.path}"`, { timeout: 5000 });
                 }}
               />
+              <Action.CopyToClipboard
+                title="Copy Path to Clipboard"
+                content={project.path}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+              />
               <ActionPanel.Section title="Shortcuts">
                 {actions
                   .filter((a) => a.shortcut)
@@ -301,6 +306,15 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                         />
                       ))}
                   </ActionPanel.Section>
+                  {item.detail.command && (
+                    <ActionPanel.Section title="Copy">
+                      <Action.CopyToClipboard
+                        title="Copy Command to Clipboard"
+                        content={item.detail.command}
+                        shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+                      />
+                    </ActionPanel.Section>
+                  )}
                   <ActionPanel.Section title="Manage">
                     <Action.CreateQuicklink
                       shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}

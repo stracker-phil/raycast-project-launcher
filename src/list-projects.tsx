@@ -303,6 +303,14 @@ export default function ListProjectsCommand(
               ))}
             </ActionPanel.Section>
 
+            <ActionPanel.Section title="Copy">
+              <Action.CopyToClipboard
+                title="Copy Path to Clipboard"
+                content={project.path}
+                shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
+              />
+            </ActionPanel.Section>
+
             <ActionPanel.Section title="Manage">
               <Action
                 title="Edit Project"
