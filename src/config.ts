@@ -141,7 +141,7 @@ function expandAppShorthand(
         label: "Open Repository",
         url: repoUrl,
         icon: "Link",
-        shortcut: "cmd+r",
+        shortcut: "cmd+shift+r",
       };
     case "claude":
       return {
