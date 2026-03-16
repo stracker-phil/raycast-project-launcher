@@ -1,5 +1,5 @@
 import { getPreferenceValues, showToast, Toast, open, trash, closeMainWindow } from "@raycast/api";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { existsSync } from "fs";
 import { ExtensionPreferences, Project, ResolvedApp, ResolvedConfig } from "./types";
 import { configPath } from "./config";
@@ -14,9 +14,8 @@ function prefs(): ExtensionPreferences {
 
 /**
  * Launch a resolved app entry.
- * - `app` field: open via `open -a "AppName" "projectPath"`
+ * - `app` field: CLI binary spawned silently in a login shell with project env vars
  * - `command` field: open in interactive terminal session
- * - neither (terminal/finder shorthands): handled by label-based dispatch
  */
 export async function launchApp(
   project: Project,
@@ -28,10 +27,14 @@ export async function launchApp(
 
     if (app.app) {
       const target = app.args || project.path;
-      // Run via login shell so the launched app inherits full user PATH (e.g. homebrew)
-      execSync(`/bin/zsh -l -c ${shellArg(`open -a ${shellArg(app.app)} ${shellArg(target)}`)}`, {
-        timeout: 5000,
+      // Spawn via login shell so the app inherits full PATH + project env vars
+      const child = spawn("/bin/zsh", ["-l", "-c", `${app.app} ${shellArg(target)}`], {
+        cwd: project.path,
+        env: projectEnv(config),
+        detached: true,
+        stdio: "ignore",
       });
+      child.unref();
     } else if (app.command) {
       await openTerminalWithCommand(project, config, app.command);
     } else if (app.url) {
@@ -49,23 +52,16 @@ export async function launchApp(
  */
 export async function openConfigFile(project: Project, config: ResolvedConfig): Promise<void> {
   const { configEditor } = prefs();
-  const editorApp = config.apps.find((a) => a.app)?.app;
-  const app = configEditor || editorApp || "Sublime Text";
+  const app = configEditor || "edit";
   const path = configPath(project);
 
   try {
     await closeMainWindow();
-    switch (app.toLowerCase()) {
-      case "subl":
-      case "sublime text":
-        execSync(`"/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl" "${path}"`, {
-          timeout: 5000,
-        });
-        break;
-
-      default:
-        execSync(`open -a "${app}" "${path}"`, { timeout: 5000 });
-    }
+    const child = spawn("/bin/zsh", ["-l", "-c", `${app} ${shellArg(path)}`], {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
 
     await showToast(Toast.Style.Success, `Opened config in ${app}`);
   } catch (error) {

@@ -138,7 +138,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         '  "shortcut": "cmd+d"',
         "}",
         "```",
-        "- `app` — open via `open -a`",
+        "- `app` — CLI binary, spawned silently with project env vars",
         "- `args` — file/path for `app` (default: project dir)",
         "- `command` — run in terminal",
         "- `${dir}` — project path",

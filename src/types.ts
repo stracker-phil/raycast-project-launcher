@@ -30,7 +30,7 @@ export interface MetaConfig {
 
 /**
  * An app launcher entry — opens an interactive app or terminal session.
- * - `app` field: launched via `open -a "AppName" "projectPath"`
+ * - `app` field: CLI binary spawned silently in a login shell with project env vars
  * - `command` field: opened in a new interactive terminal session
  * - string shorthand (e.g. "editor"): expands to a predefined app config
  */

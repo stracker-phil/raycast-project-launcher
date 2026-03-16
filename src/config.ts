@@ -163,7 +163,7 @@ function expandAppShorthand(
     case "editor":
       return {
         label: `Edit Code`,
-        app: metaEditor || p.defaultEditor || "PhpStorm",
+        app: metaEditor || p.defaultEditor || "phpstorm",
         icon: "Code",
         shortcut: "cmd+o",
       };
@@ -178,7 +178,7 @@ function expandAppShorthand(
       if (!isGitRepo) return null;
       return {
         label: `Open Git Client`,
-        app: p.gitClient || undefined,
+        app: p.gitClient || "smerge",
         icon: "CheckList",
         shortcut: "cmd+g",
       };
