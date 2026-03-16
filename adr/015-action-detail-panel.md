@@ -16,20 +16,29 @@ Enable `isShowingDetail` on the project-actions List to show a detail panel for 
 
 ## Implementation
 
-Each `ActionItem` carries an `ActionDetail` object with: `type`, `app?`, `command?`, `shortcutLabel?`, `markdown?`.
+Each `ActionItem` carries an `ActionDetail` object with: `type`, `app?`, `args?`, `command?`, `url?`, `shortcutLabel?`, `markdown?`.
 
 The `actionDetail()` function renders:
 - If `markdown` is set: full markdown panel (used for the config reference)
-- Otherwise: command preview as a code block (the shell command, or `open -a "AppName"` for app launchers) with metadata section showing type, app, shortcut, and project env vars
+- Otherwise: command preview as a code block with metadata section showing type, app name, shortcut, and project env vars
 
 ### Action types displayed
 
 | Type | Shown for | Preview |
 |------|-----------|---------|
-| App Launcher | Apps with `app` field | `open -a "AppName"` |
-| Terminal Session | Apps with `command` field | The shell command |
+| App Launcher | All `apps[]` entries | The shell command, URL, or app binary |
 | Background Script | Scripts | The shell command |
 | Manage | Edit Project, Edit Config | No command preview / config reference |
+
+### App name display
+
+All App Launcher items show a human-readable "App" row (always in second position, after "Type"), derived from whichever launch field is set:
+
+- `app` field: CLI binary mapped to product name via a lookup table (`phpstorm → PhpStorm`, `smerge/repo → Sublime Merge`, `edit → Edit`). Unknown binaries show as-is.
+- `url` field: URL protocol mapped to app name (`http:`/`https:` → `Browser`, `obsidian:` → `Obsidian`). Unknown protocols show the raw URL.
+- `command` field: always displays `Terminal`.
+
+The mapping lives in `src/shortcuts.ts` (`CLI_APP_NAMES`, `URL_PROTOCOL_NAMES`) alongside `friendlyCliName()`, `friendlyUrlName()`, and `friendlyAppName()`.
 
 ### Environment variables
 

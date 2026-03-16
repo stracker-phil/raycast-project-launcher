@@ -9,15 +9,15 @@ Some projects need specific environment variables (e.g. `CLAUDE_MODEL`, `NODE_EN
 
 ## Decision
 
-The `env` field in `.project-launcher.json` is an object of key-value pairs merged into `process.env` for all commands (start/stop, scripts) and exported as shell variables in terminal sessions.
+The `env` field in `.project-launcher.json` is an object of key-value pairs merged into `process.env` for all app launches, commands, and scripts.
 
 ## Implementation
 
-- Commands: `env` merged via `projectEnv()` into `execSync` options
-- Terminal sessions: `export K=V; export K2=V2; cd /path` prepended to the shell command
+- App launches (`app` field): spawned via `/bin/zsh -l -c "<binary> <path>"` with `projectEnv()` — full login-shell PATH (homebrew, nvm, etc.) plus project `env` vars
+- Terminal sessions (`command` field): `export K=V; export K2=V2; cd /path` prepended to the shell command
+- Scripts (`scripts[]`): `env` merged via `projectEnv()` into `execSync` options
 - PATH is always expanded with `/usr/local/bin` and `/opt/homebrew/bin` for Homebrew tool discovery
 
 ## Trade-offs
 
-- Warp terminal doesn't support env injection (opened via `open -a`, no script control)
 - Env vars are visible in the config file (don't store secrets there)

@@ -37,14 +37,14 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - LocalStorage only holds `id`, `path`, `createdAt` (minimal registration data)
 - All project details live in `.project-launcher.json` in the project root
 - Config structure: `name`, `meta` (icon/color/tag/url/repoUrl/notes/editor/archived/starred), `env`, `apps[]`, `scripts[]`
-- `apps[]` — interactive launchers (open macOS app via `app` field, or terminal session via `command` field)
+- `apps[]` — launchers: `app` field = CLI binary spawned silently in a login shell (full env), `command` field = interactive terminal session, `url` field = opened via Raycast `open()` (supports URL schemes like `obsidian://`)
 - `scripts[]` — background shell commands (execSync, no terminal)
 - App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
 - `meta.editor` overrides the global default editor for a specific project
-- Variable substitution: `${dir}` (project path), `${url}` (meta.url), `~` (home dir) in commands and `args`
-- `apps[]` entries support `args` field to pass a specific file/path to `app` instead of the project directory
+- Variable substitution: `${dir}` (project path), `${url}` (meta.url), `~` (home dir) in commands, `args`, and `url` fields
+- `apps[]` entries support `args` field to pass a specific file/path to the `app` binary instead of the project directory
 - Git repo auto-detection (shows git shorthand only for repos)
-- Env vars from config are injected into all commands and terminal sessions
+- Env vars from config are injected into all app launches, commands, and terminal sessions
 - Project action view has Info section (project name, path, tag, git status, url, repoUrl, env vars)
 - Keyboard shortcuts work in both project list and project action views
 - Form fields use smart dropdowns: tag selector with existing tags + "New Tag", icon selector with curated list + "Custom Icon"

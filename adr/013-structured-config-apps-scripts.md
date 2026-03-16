@@ -14,12 +14,13 @@ Restructure `.project-launcher.json` into a nested format:
 - **`name`** — project display name (top-level, unchanged)
 - **`meta`** — visual/metadata object: `icon`, `color`, `url`, `notes`
 - **`env`** — environment variables (top-level, unchanged)
-- **`apps`** — array of interactive launchers (open a macOS app or an interactive terminal session)
+- **`apps`** — array of launchers (silent CLI spawn or interactive terminal session)
 - **`scripts`** — array of background commands (run via `execSync`, no terminal)
 
 Apps support two launch modes determined by which field is set:
-- `app` field → launched via `open -a "AppName" "projectPath"`. Optional `args` field overrides the project path with a specific file or path.
+- `app` field → CLI binary spawned silently in a login shell with full project env vars. Optional `args` field overrides the project path with a specific file or path.
 - `command` field → opened in a new interactive terminal session with env vars
+- `url` field → opened in the default browser via Raycast's `open()`
 
 Scripts always run in the background with no visible terminal.
 
@@ -27,16 +28,16 @@ Both apps and scripts support per-item `icon`, `color`, and `shortcut` fields.
 
 ## Implementation
 
-- `apps` entries are either string shorthands (`"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"`) or full objects with `label`, `app`/`command`, `args`, `icon`, `color`, `shortcut`
-- String shorthands expand using extension preferences (e.g. `"editor"` → `{ label: "Open in Cursor", app: "Cursor", shortcut: "cmd+o" }`)
+- `apps` entries are either string shorthands (`"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"`) or full objects with `label`, `app`/`command`/`url`, `args`, `icon`, `color`, `shortcut`
+- String shorthands expand using extension preferences (e.g. `"editor"` → `{ label: "Edit Code", app: "phpstorm", shortcut: "cmd+o" }`)
 - `scripts` entries are objects with `label`, `command`, `icon`, `color`, `shortcut`
-- Variable substitution: `${dir}` (project path), `${url}` (`meta.url`), and `~` (home directory) are replaced in all commands and `args` fields
+- Variable substitution: `${dir}` (project path), `${url}` (`meta.url`), and `~` (home directory) are replaced in all `command`, `args`, and `url` fields
 - The UI renders: Apps section → Scripts section → Manage section
 
 ## Rationale
 
 - **Flexibility**: adding a new launcher is a config change, not a code change
-- **Two execution modes** cover both "open an app" and "start an interactive CLI tool" without ambiguity
+- **Two execution modes** cover both "open an app silently" and "start an interactive CLI tool" without ambiguity
 - **Shorthands** keep common entries concise while full objects allow complete customisation
 - **Per-item visuals** let each action have its own icon and color in the list
 - Moving `icon`, `color`, `url`, `notes` into `meta` keeps the top level clean and separates concerns
