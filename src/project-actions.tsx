@@ -285,9 +285,14 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                       />
                     </List.Item.Detail.Metadata.TagList>
                   )}
-                  {config.meta.notes && (
-                    <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
-                  )}
+                  {config.meta.notes &&
+                    (Array.isArray(config.meta.notes)
+                      ? config.meta.notes.map((line, i) => (
+                          <List.Item.Detail.Metadata.Label key={i} title={i?"":"Notes"} text={line} />
+                        ))
+                      : <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
+                    )
+                  }
                   {config.isGitRepo && config.git && (
                     <>
                       <List.Item.Detail.Metadata.Separator />

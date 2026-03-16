@@ -84,7 +84,11 @@ export default function AddProjectCommand(props: AddProjectProps) {
           icon: icon,
           color: values.color || "Blue",
           tag: tag || undefined,
-          notes: values.notes.trim() || undefined,
+          notes: (() => {
+          const lines = values.notes.trim().split("\n").filter((l) => l.trim() !== "");
+          if (lines.length === 0) return undefined;
+          return lines.length === 1 ? lines[0] : lines;
+        })(),
         },
       });
     }
@@ -245,7 +249,11 @@ export default function AddProjectCommand(props: AddProjectProps) {
             id="notes"
             title="Notes"
             placeholder="Free-form notes about this project…"
-            defaultValue={fileConfig?.meta?.notes ?? ""}
+            defaultValue={
+              Array.isArray(fileConfig?.meta?.notes)
+                ? fileConfig.meta.notes.join("\n")
+                : (fileConfig?.meta?.notes ?? "")
+            }
           />
         </>
       )}

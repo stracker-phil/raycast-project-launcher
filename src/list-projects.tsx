@@ -232,7 +232,7 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
               </List.Item.Detail.Metadata.TagList>
             )}
             {config.meta.notes && (
-              <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
+              <List.Item.Detail.Metadata.Label title="Notes" text={Array.isArray(config.meta.notes) ? config.meta.notes[0] : config.meta.notes} />
             )}
             {config.isGitRepo && config.git && (
               <>

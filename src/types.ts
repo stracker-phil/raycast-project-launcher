@@ -22,7 +22,7 @@ export interface MetaConfig {
   tag?: string;
   url?: string;
   repoUrl?: string;
-  notes?: string;
+  notes?: string | string[];
   editor?: string;
   archived?: boolean;
   starred?: boolean;
@@ -105,7 +105,7 @@ export interface ResolvedConfig {
     tag?: string;
     url?: string;
     repoUrl?: string;
-    notes?: string;
+    notes?: string | string[];
     archived?: boolean;
     starred?: boolean;
   };
