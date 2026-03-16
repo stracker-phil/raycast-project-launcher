@@ -349,6 +349,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
               <Action
                 title="Open in Finder"
                 icon={Icon.Finder}
+                shortcut={{ modifiers: ["cmd"], key: "f" }}
                 onAction={() => {
                   execSync(`open "${project.path}"`, { timeout: 5000 });
                 }}
@@ -392,6 +393,12 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                     onAction={item.onAction}
                   />
                   <ActionPanel.Section title="Shortcuts">
+                    <Action
+                      title="Open in Finder"
+                      icon={Icon.Finder}
+                      shortcut={{ modifiers: ["cmd"], key: "f" }}
+                      onAction={() => execSync(`open "${project.path}"`, { timeout: 5000 })}
+                    />
                     {actions
                       .filter((a) => a.shortcut && a.id !== item.id)
                       .map((a) => (

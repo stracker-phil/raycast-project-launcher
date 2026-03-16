@@ -23,6 +23,7 @@ import {
   setLastFilter,
   setLastOpenedProjectId,
 } from "./storage";
+import { execSync } from "child_process";
 import { basename } from "path";
 import { homedir } from "os";
 import { resolveConfig, setArchived, setStarred } from "./config";
@@ -330,6 +331,12 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
                   setSelection(project.id);
                   push(<ProjectActions project={project} config={config} onRefresh={refresh} />);
                 }}
+              />
+              <Action
+                title="Open in Finder"
+                icon={Icon.Finder}
+                shortcut={{ modifiers: ["cmd"], key: "f" }}
+                onAction={() => execSync(`open "${project.path}"`, { timeout: 5000 })}
               />
             </ActionPanel.Section>
 
