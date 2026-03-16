@@ -24,7 +24,7 @@ import {
 import { basename } from "path";
 import { homedir } from "os";
 import { resolveConfig, setArchived } from "./config";
-import { launchApp, openConfigFile, trashConfigFile } from "./actions";
+import { launchApp, openConfigFile, runScript, trashConfigFile } from "./actions";
 import { parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 import ProjectActions from "./project-actions";
@@ -313,17 +313,33 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
               />
             </ActionPanel.Section>
 
-            <ActionPanel.Section title="Quick Actions">
-              {config.apps.map((app) => (
-                <Action
-                  key={app.label}
-                  title={app.label}
-                  icon={Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2}
-                  shortcut={parseShortcut(app.shortcut)}
-                  onAction={() => launchApp(project, config, app)}
-                />
-              ))}
-            </ActionPanel.Section>
+            {config.apps.length > 0 && (
+              <ActionPanel.Section title="Project Apps">
+                {config.apps.map((app) => (
+                  <Action
+                    key={app.label}
+                    title={app.label}
+                    icon={Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2}
+                    shortcut={parseShortcut(app.shortcut)}
+                    onAction={() => launchApp(project, config, app)}
+                  />
+                ))}
+              </ActionPanel.Section>
+            )}
+
+            {config.scripts.length > 0 && (
+              <ActionPanel.Section title="Project Scripts">
+                {config.scripts.map((script) => (
+                  <Action
+                    key={script.label}
+                    title={script.label}
+                    icon={Icon[script.icon as keyof typeof Icon] ?? Icon.Terminal}
+                    shortcut={parseShortcut(script.shortcut)}
+                    onAction={() => runScript(project, config, script.label, script.command)}
+                  />
+                ))}
+              </ActionPanel.Section>
+            )}
 
             <ActionPanel.Section title="Copy">
               <Action.CopyToClipboard
