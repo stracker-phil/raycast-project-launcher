@@ -54,12 +54,14 @@ export async function updateProject(updated: Project): Promise<void> {
 
 const LAST_OPENED_KEY = "lastOpenedProjectId";
 
-export async function getLastOpenedProjectId(): Promise<string | null> {
-  return (await LocalStorage.getItem<string>(LAST_OPENED_KEY)) ?? null;
+export async function getLastOpenedProjectId(viewId?: string): Promise<string | null> {
+  const key = viewId ? `${LAST_OPENED_KEY}:${viewId}` : LAST_OPENED_KEY;
+  return (await LocalStorage.getItem<string>(key)) ?? null;
 }
 
-export async function setLastOpenedProjectId(id: string): Promise<void> {
-  await LocalStorage.setItem(LAST_OPENED_KEY, id);
+export async function setLastOpenedProjectId(id: string, viewId?: string): Promise<void> {
+  const key = viewId ? `${LAST_OPENED_KEY}:${viewId}` : LAST_OPENED_KEY;
+  await LocalStorage.setItem(key, id);
 }
 
 const LAST_FILTER_KEY = "lastFilter";

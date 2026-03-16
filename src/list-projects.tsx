@@ -45,15 +45,14 @@ function projectName(config: ResolvedConfig, project: Project): string {
   return config.name || basename(project.path);
 }
 
-export default function ListProjectsCommand(props: LaunchProps<{ launchContext?: LaunchContext }>) {
-  const contextId = props.launchContext?.projectId;
+export function ProjectList({ initialProjectId, initialFilter }: { initialProjectId?: string; initialFilter?: string }) {
   const [listState, setListState] = useState<{
     items: ProjectWithConfig[];
     lastOpenedId: string | undefined;
     isLoading: boolean;
   }>({ items: [], lastOpenedId: undefined, isLoading: true });
   const [directMatch, setDirectMatch] = useState<ProjectWithConfig | null>(null);
-  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [selectedTag, setSelectedTag] = useState<string>(initialFilter ?? "all");
   const [selection, setSelection] = useState<string | undefined>(undefined);
   const { push } = useNavigation();
 
@@ -69,7 +68,7 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
     (async () => {
       const [loaded, storedLastId, cachedConfigs, savedFilter] = await Promise.all([
         loadProjects(),
-        getLastOpenedProjectId(),
+        getLastOpenedProjectId(initialFilter),
         loadConfigCache(),
         getLastFilter(),
       ]);
@@ -98,7 +97,7 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
         projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)),
       );
 
-      if (savedFilter && savedFilter !== "all") {
+      if (!initialFilter && savedFilter && savedFilter !== "all") {
         const activeItems = items.filter((i) => !i.config.meta.archived);
         const validFilters = new Set<string>([
           "starred",
@@ -111,8 +110,8 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
         }
       }
 
-      if (contextId) {
-        const match = items.find((item) => item.project.id === contextId);
+      if (initialProjectId) {
+        const match = items.find((item) => item.project.id === initialProjectId);
         if (match) {
           setDirectMatch(match);
         }
@@ -326,7 +325,7 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
                 title="Show Actions"
                 icon={Icon.List}
                 onAction={async () => {
-                  await setLastOpenedProjectId(project.id);
+                  await setLastOpenedProjectId(project.id, initialFilter);
                   setListState((s) => ({ ...s, lastOpenedId: project.id }));
                   setSelection(project.id);
                   push(<ProjectActions project={project} config={config} onRefresh={refresh} />);
@@ -556,6 +555,10 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
       )}
     </List>
   );
+}
+
+export default function ListProjectsCommand(props: LaunchProps<{ launchContext?: LaunchContext }>) {
+  return <ProjectList initialProjectId={props.launchContext?.projectId} />;
 }
 
 function projectDeeplink(projectId: string): string {

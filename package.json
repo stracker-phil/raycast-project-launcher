@@ -10,9 +10,30 @@
   "commands": [
     {
       "name": "list-projects",
-      "title": "Projects",
+      "title": "Recent Projects",
       "subtitle": "Dev Project Launcher",
-      "description": "Browse, manage, and launch your dev projects",
+      "description": "Browse your dev projects, restoring your last-used filter",
+      "mode": "view"
+    },
+    {
+      "name": "starred-projects",
+      "title": "Starred Projects",
+      "subtitle": "Dev Project Launcher",
+      "description": "Open the project list filtered to starred projects",
+      "mode": "view"
+    },
+    {
+      "name": "archived-projects",
+      "title": "Archived Projects",
+      "subtitle": "Dev Project Launcher",
+      "description": "Open the project list filtered to archived projects",
+      "mode": "view"
+    },
+    {
+      "name": "all-projects",
+      "title": "All Projects",
+      "subtitle": "Dev Project Launcher",
+      "description": "Open the project list showing all active projects",
       "mode": "view"
     }
   ],
