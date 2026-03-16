@@ -14,11 +14,13 @@ import {
 import { useEffect, useState } from "react";
 import { Project, ResolvedConfig } from "./types";
 import {
+  getLastFilter,
   getLastOpenedProjectId,
   loadConfigCache,
   loadProjects,
   removeProject,
   saveConfigCache,
+  setLastFilter,
   setLastOpenedProjectId,
 } from "./storage";
 import { basename } from "path";
@@ -64,10 +66,11 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
 
   useEffect(() => {
     (async () => {
-      const [loaded, storedLastId, cachedConfigs] = await Promise.all([
+      const [loaded, storedLastId, cachedConfigs, savedFilter] = await Promise.all([
         loadProjects(),
         getLastOpenedProjectId(),
         loadConfigCache(),
+        getLastFilter(),
       ]);
 
       let items: ProjectWithConfig[];
@@ -93,6 +96,19 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
       items.sort((a, b) =>
         projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)),
       );
+
+      if (savedFilter && savedFilter !== "all") {
+        const activeItems = items.filter((i) => !i.config.meta.archived);
+        const validFilters = new Set<string>([
+          "starred",
+          "archived",
+          "untagged",
+          ...activeItems.map((i) => i.config.meta.tag).filter(Boolean) as string[],
+        ]);
+        if (validFilters.has(savedFilter)) {
+          setSelectedTag(savedFilter);
+        }
+      }
 
       if (contextId) {
         const match = items.find((item) => item.project.id === contextId);
@@ -465,7 +481,14 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
       searchBarPlaceholder="Search projects…"
       searchBarAccessory={
         allTags.length > 0 || hasStarred || hasArchived ? (
-          <List.Dropdown tooltip="Filter by Tag" value={selectedTag} onChange={setSelectedTag}>
+          <List.Dropdown
+          tooltip="Filter by Tag"
+          value={selectedTag}
+          onChange={(value) => {
+            setSelectedTag(value);
+            setLastFilter(value);
+          }}
+        >
             <List.Dropdown.Item title="All Projects" value="all" />
             {hasStarred && <List.Dropdown.Item title="Starred" value="starred" />}
             {allTags.map((tag) => (

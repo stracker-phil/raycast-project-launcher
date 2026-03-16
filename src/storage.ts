@@ -62,6 +62,16 @@ export async function setLastOpenedProjectId(id: string): Promise<void> {
   await LocalStorage.setItem(LAST_OPENED_KEY, id);
 }
 
+const LAST_FILTER_KEY = "lastFilter";
+
+export async function getLastFilter(): Promise<string | null> {
+  return (await LocalStorage.getItem<string>(LAST_FILTER_KEY)) ?? null;
+}
+
+export async function setLastFilter(filter: string): Promise<void> {
+  await LocalStorage.setItem(LAST_FILTER_KEY, filter);
+}
+
 // ---------------------------------------------------------------------------
 // Config cache — instant list render from cached ResolvedConfig
 // ---------------------------------------------------------------------------
