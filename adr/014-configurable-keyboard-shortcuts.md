@@ -11,7 +11,8 @@ After moving to the apps/scripts array config (ADR-013), keyboard shortcuts were
 
 Keyboard shortcuts are defined per-item, not per-position:
 
-- **String shorthands** get fixed default shortcuts: `editor` → `cmd+o`, `terminal` → `cmd+t`, `finder` → `cmd+f`, `git` → `cmd+g`, `browser` → `cmd+b`
+- **String shorthands** get fixed default shortcuts: `editor` → `cmd+o`, `terminal` → `cmd+t`, `git` → `cmd+g`, `browser` → `cmd+b`
+- **`cmd+f`** is a reserved system shortcut for "Open in Finder" (available on every item in both the project list and action view); it is not assignable to config entries
 - **Custom app/script entries** have no shortcut by default, but can specify one via the `shortcut` field (e.g. `"shortcut": "cmd+k"`)
 - Shortcut strings use the format `modifier+modifier+key` (e.g. `"cmd+shift+k"`, `"ctrl+x"`)
 

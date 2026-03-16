@@ -37,6 +37,7 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - LocalStorage only holds `id`, `path`, `createdAt` (minimal registration data)
 - All project details live in `.project-launcher.json` in the project root
 - Config structure: `name`, `meta` (icon/color/tag/url/repoUrl/notes/editor/archived/starred), `env`, `apps[]`, `scripts[]`
+- `meta.notes` accepts a single string or an array of strings; in the form textarea each array item is one line; in the action detail panel each line renders as a separate row; in the list view only the first line is shown
 - `apps[]` — launchers: `app` field = CLI binary spawned silently in a login shell (full env), `command` field = interactive terminal session, `url` field = opened via Raycast `open()` (supports URL schemes like `obsidian://`)
 - `scripts[]` — background shell commands (execSync, no terminal)
 - App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
@@ -51,7 +52,7 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - Adding a project with an existing `.project-launcher.json` auto-shows "Import existing configuration" checkbox — when checked, config file is preserved as-is
 - `meta.starred` and `meta.archived` are mutually exclusive — starring clears archived, archiving clears starred
 - Three-tier filtering: Starred (shortlist), All Projects (default, non-archived), Archived (completed/discarded)
-- Star/Unstar (`Ctrl+S`), Archive/Unarchive (`Ctrl+A`/`Ctrl+U`) actions in both project list and action view
+- Open in Finder (`Cmd+F`), Star/Unstar (`Ctrl+S`), Archive/Unarchive (`Ctrl+A`/`Ctrl+U`) actions in both project list and action view
 - The last-used filter (tag, starred, archived) is persisted in LocalStorage and restored on next open; invalid/stale values fall back to "All Projects"
 
 ## Commands

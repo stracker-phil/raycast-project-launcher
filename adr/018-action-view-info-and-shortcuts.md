@@ -21,7 +21,7 @@ All actions with keyboard shortcuts are added to every item's `ActionPanel` (in 
 A dedicated "Info" section is rendered at the top of the action list with a single item showing:
 - Project name (as the list item title)
 - Path, tag, git branch/status, URL, environment variables, notes (in the detail panel)
-- Primary action: "Open in Finder"
+- Primary action: "Open in Finder" (`cmd+f`)
 - All shortcuts available from this item too
 
 The project name is also shown in the search bar placeholder (`"ProjectName -- Search actions..."`).
@@ -30,7 +30,7 @@ The project name is also shown in the search bar placeholder (`"ProjectName -- S
 
 - Consistent shortcut behavior across both views reduces friction
 - Project context is always visible without navigating back
-- The Info item's "Open in Finder" primary action replaces the removed `finder` app shorthand, providing the same functionality without a dedicated config entry
+- "Open in Finder" (`cmd+f`) is a fixed system action available on every item in both the project list and the action view — it replaces the removed `finder` app shorthand and is not configurable
 
 ## Trade-offs
 
