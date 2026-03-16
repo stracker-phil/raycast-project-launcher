@@ -24,4 +24,4 @@ Add an `archived` boolean flag to `meta` in `.project-launcher.json`. Archived p
 
 - Storing the flag in the config file (not LocalStorage) keeps it consistent with ADR-001's split storage model — project metadata belongs in `.project-launcher.json`
 - Soft-hiding is preferable to deletion: the project stays registered and its config is preserved
-- Reuses the existing filter dropdown rather than introducing a separate UI, keeping the interface simple
+- Accessible via both the filter dropdown (ADR-012) and the dedicated "Archived Projects" command (ADR-022)

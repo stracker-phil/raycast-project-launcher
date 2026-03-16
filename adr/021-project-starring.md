@@ -28,4 +28,4 @@ Add a `starred` boolean flag to `meta` in `.project-launcher.json`. Starred and 
 
 - Mutual exclusivity keeps the model simple — a project is in exactly one tier. No confusing "starred and archived" state to reason about.
 - Starred projects still appear in the default "All Projects" view, so starring is purely additive filtering — it doesn't hide the project from anywhere.
-- Reuses the existing filter dropdown (ADR-012) rather than introducing separate UI.
+- Accessible via both the filter dropdown (ADR-012) and the dedicated "Starred Projects" command (ADR-022).

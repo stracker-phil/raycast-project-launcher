@@ -17,7 +17,8 @@ Add a `List.Dropdown` as the `searchBarAccessory` on the project list, allowing 
 - Filtering is applied before grouping, so section headers still render correctly
 - The dropdown appears when at least one tag exists or when archived projects exist
 - An "Archived Projects" option appears in the dropdown when any project has `meta.archived: true` (see ADR-020)
-- The selected filter value is persisted to LocalStorage (`lastFilter` key) and restored on next open. If the saved value is no longer valid (e.g. the tag was removed from all projects), it silently falls back to "All Projects"
+- The selected filter value is persisted to LocalStorage (`lastFilter` key) and restored on next open by the "Recent Projects" command. If the saved value is no longer valid (e.g. the tag was removed from all projects), it silently falls back to "All Projects"
+- Dedicated commands for Starred, Archived, and All Projects bypass `lastFilter` and open directly to their fixed filter (see ADR-022)
 
 ## Rationale
 

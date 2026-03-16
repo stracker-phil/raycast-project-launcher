@@ -7,7 +7,10 @@ Raycast extension for managing and launching dev projects.
 - `@raycast/api` for UI components and storage
 
 ## Structure
-- `src/list-projects.tsx` — Main list view, groups projects by tag, tag filter dropdown
+- `src/list-projects.tsx` — `ProjectList` shared component + `ListProjectsCommand` (Recent Projects entry point); groups projects by tag, tag filter dropdown
+- `src/starred-projects.tsx` — Thin wrapper: opens `ProjectList` pre-filtered to starred
+- `src/archived-projects.tsx` — Thin wrapper: opens `ProjectList` pre-filtered to archived
+- `src/all-projects.tsx` — Thin wrapper: opens `ProjectList` pre-filtered to all active
 - `src/project-actions.tsx` — Per-project action list with Info section (opened via Enter)
 - `src/add-project.tsx` — Add/edit project form (path + meta fields, auto-detects existing config)
 - `src/actions.ts` — App launchers, script runners, terminal helpers
@@ -25,6 +28,7 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - ADR-012: Tag filter dropdown on project list (+ starred/archived filters)
 - ADR-020: Project archiving (hide/show via meta.archived flag)
 - ADR-021: Project starring and three-tier filtering (starred/all/archived)
+- ADR-022: Dedicated filter commands (Recent/Starred/Archived/All) + per-view selection memory
 - ADR-013: Structured config with apps[] and scripts[] arrays
 - ADR-014: Configurable keyboard shortcuts (per-item, not positional)
 - ADR-015: Action detail panel (command preview, type, shortcuts, config reference)
@@ -53,7 +57,9 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - `meta.starred` and `meta.archived` are mutually exclusive — starring clears archived, archiving clears starred
 - Three-tier filtering: Starred (shortlist), All Projects (default, non-archived), Archived (completed/discarded)
 - Open in Finder (`Cmd+F`), Star/Unstar (`Ctrl+S`), Archive/Unarchive (`Ctrl+A`/`Ctrl+U`) actions in both project list and action view
-- The last-used filter (tag, starred, archived) is persisted in LocalStorage and restored on next open; invalid/stale values fall back to "All Projects"
+- Four Raycast commands: "Recent Projects" (restores last-used filter), "Starred Projects", "Archived Projects", "All Projects" (last three open with a fixed filter, ignoring `lastFilter`)
+- The last-used filter is persisted in `lastFilter` and restored only by "Recent Projects"; invalid/stale values fall back to "All Projects"
+- Last opened project ID is tracked per-view: `lastOpenedProjectId` for Recent Projects, `lastOpenedProjectId:<filter>` for the dedicated filter commands
 
 ## Commands
 - `npm run dev` — develop with hot reload
