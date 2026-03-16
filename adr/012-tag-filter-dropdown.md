@@ -13,9 +13,10 @@ Add a `List.Dropdown` as the `searchBarAccessory` on the project list, allowing 
 
 ## Implementation
 
-- Tag list for the dropdown is derived from all projects (not the filtered set) so options remain stable while filtering
+- Tag list for the dropdown is derived from all active (non-archived) projects so options remain stable while filtering
 - Filtering is applied before grouping, so section headers still render correctly
-- The dropdown only appears when at least one tag exists
+- The dropdown appears when at least one tag exists or when archived projects exist
+- An "Archived Projects" option appears in the dropdown when any project has `meta.archived: true` (see ADR-020)
 
 ## Rationale
 

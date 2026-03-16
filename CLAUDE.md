@@ -22,7 +22,8 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - ADR-002: Cascading config resolution (file > preferences > fallback)
 - ADR-007: Two-tier action UI (Enter → action list, context menu → shortcuts)
 - ADR-008: Deep links + quicklinks for direct project access
-- ADR-012: Tag filter dropdown on project list
+- ADR-012: Tag filter dropdown on project list (+ archived projects filter)
+- ADR-020: Project archiving (hide/show via meta.archived flag)
 - ADR-013: Structured config with apps[] and scripts[] arrays
 - ADR-014: Configurable keyboard shortcuts (per-item, not positional)
 - ADR-015: Action detail panel (command preview, type, shortcuts, config reference)
@@ -34,7 +35,7 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 ## Key concepts
 - LocalStorage only holds `id`, `path`, `createdAt` (minimal registration data)
 - All project details live in `.project-launcher.json` in the project root
-- Config structure: `name`, `meta` (icon/color/tag/url/repoUrl/notes/editor), `env`, `apps[]`, `scripts[]`
+- Config structure: `name`, `meta` (icon/color/tag/url/repoUrl/notes/editor/archived), `env`, `apps[]`, `scripts[]`
 - `apps[]` — interactive launchers (open macOS app via `app` field, or terminal session via `command` field)
 - `scripts[]` — background shell commands (execSync, no terminal)
 - App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
@@ -47,6 +48,8 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - Keyboard shortcuts work in both project list and project action views
 - Form fields use smart dropdowns: tag selector with existing tags + "New Tag", icon selector with curated list + "Custom Icon"
 - Adding a project with an existing `.project-launcher.json` auto-shows "Import existing configuration" checkbox — when checked, config file is preserved as-is
+- `meta.archived` hides a project from the main list; "Archived Projects" filter in the dropdown reveals them
+- Archive/Unarchive actions available in both the project list (Manage section) and project action view
 
 ## Commands
 - `npm run dev` — develop with hot reload
