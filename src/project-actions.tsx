@@ -1,8 +1,18 @@
-import { Action, ActionPanel, Color, Icon, List, useNavigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Color,
+  Icon,
+  List,
+  showToast,
+  Toast,
+  useNavigation,
+} from "@raycast/api";
 import { execSync } from "child_process";
 import { basename } from "path";
 import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
+import { setArchived } from "./config";
 import { launchApp, openConfigFile, runScript } from "./actions";
 import { parseShortcut, renderShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
@@ -151,6 +161,27 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     onAction: () => openConfigFile(project, config),
   });
 
+  actions.push({
+    id: "toggle-archive",
+    title: config.meta.archived ? "Unarchive Project" : "Archive Project",
+    icon: { source: config.meta.archived ? Icon.ArrowCounterClockwise : Icon.Tray },
+    section: "Manage",
+    shortcut: config.meta.archived
+      ? { modifiers: ["ctrl"], key: "u" }
+      : { modifiers: ["ctrl"], key: "a" },
+    detail: {
+      type: "Manage",
+      shortcutLabel: renderShortcut(config.meta.archived ? "ctrl+u" : "ctrl+a"),
+    },
+    onAction: async () => {
+      const newState = !config.meta.archived;
+      setArchived(project.path, newState);
+      await showToast(Toast.Style.Success, `${newState ? "Archived" : "Unarchived"} ${name}`);
+      onRefresh();
+      pop();
+    },
+  });
+
   const sections = new Map<string, ActionItem[]>();
   for (const a of actions) {
     const group = sections.get(a.section) ?? [];
@@ -169,8 +200,15 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
             {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
-            {detail.args && <List.Item.Detail.Metadata.Label title="Args" text={detail.args.replace(homedir(), "~")} />}
-            {detail.command && <List.Item.Detail.Metadata.Label title="Command" text={detail.command} />}
+            {detail.args && (
+              <List.Item.Detail.Metadata.Label
+                title="Args"
+                text={detail.args.replace(homedir(), "~")}
+              />
+            )}
+            {detail.command && (
+              <List.Item.Detail.Metadata.Label title="Command" text={detail.command} />
+            )}
             {detail.url && <List.Item.Detail.Metadata.Label title="URL" text={detail.url} />}
             {detail.shortcutLabel && (
               <List.Item.Detail.Metadata.Label title="Shortcut" text={detail.shortcutLabel} />
@@ -201,15 +239,24 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         <List.Item
           id="info-project"
           title={name}
-          icon={{ source: Icon[config.meta.icon as keyof typeof Icon] ?? Icon.Folder, tintColor: Color[config.meta.color as keyof typeof Color] ?? Color.Blue }}
+          icon={{
+            source: Icon[config.meta.icon as keyof typeof Icon] ?? Icon.Folder,
+            tintColor: Color[config.meta.color as keyof typeof Color] ?? Color.Blue,
+          }}
           detail={
             <List.Item.Detail
               metadata={
                 <List.Item.Detail.Metadata>
-                  <List.Item.Detail.Metadata.Label title="Path" text={project.path.replace(homedir(), "~")} />
+                  <List.Item.Detail.Metadata.Label
+                    title="Path"
+                    text={project.path.replace(homedir(), "~")}
+                  />
                   {config.meta.tag && (
                     <List.Item.Detail.Metadata.TagList title="Tag">
-                      <List.Item.Detail.Metadata.TagList.Item text={config.meta.tag} color={Color.Blue} />
+                      <List.Item.Detail.Metadata.TagList.Item
+                        text={config.meta.tag}
+                        color={Color.Blue}
+                      />
                     </List.Item.Detail.Metadata.TagList>
                   )}
                   {config.meta.notes && (
@@ -218,7 +265,10 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                   {config.isGitRepo && config.git && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Label title="Git Branch" text={config.git.branch} />
+                      <List.Item.Detail.Metadata.Label
+                        title="Git Branch"
+                        text={config.git.branch}
+                      />
                       <List.Item.Detail.Metadata.TagList title="Git Status">
                         <List.Item.Detail.Metadata.TagList.Item
                           text={config.git.dirty ? "Uncommitted Changes" : "Clean"}
@@ -231,10 +281,18 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                     <>
                       <List.Item.Detail.Metadata.Separator />
                       {config.meta.url && (
-                        <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                        <List.Item.Detail.Metadata.Link
+                          title="URL"
+                          text={config.meta.url}
+                          target={config.meta.url}
+                        />
                       )}
                       {config.meta.repoUrl && (
-                        <List.Item.Detail.Metadata.Link title="Repository" text={config.meta.repoUrl} target={config.meta.repoUrl} />
+                        <List.Item.Detail.Metadata.Link
+                          title="Repository"
+                          text={config.meta.repoUrl}
+                          target={config.meta.repoUrl}
+                        />
                       )}
                     </>
                   )}
@@ -243,7 +301,11 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                       <List.Item.Detail.Metadata.Separator />
                       <List.Item.Detail.Metadata.Label title="Environment" />
                       {Object.entries(env).map(([key, value]) => (
-                        <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
+                        <List.Item.Detail.Metadata.Label
+                          key={key}
+                          title={`  ${key}`}
+                          text={value}
+                        />
                       ))}
                     </>
                   )}
@@ -292,7 +354,12 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
               detail={actionDetail(item.detail)}
               actions={
                 <ActionPanel>
-                  <Action title={item.title} icon={item.icon} shortcut={item.shortcut} onAction={item.onAction} />
+                  <Action
+                    title={item.title}
+                    icon={item.icon}
+                    shortcut={item.shortcut}
+                    onAction={item.onAction}
+                  />
                   <ActionPanel.Section title="Shortcuts">
                     {actions
                       .filter((a) => a.shortcut && a.id !== item.id)

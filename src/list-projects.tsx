@@ -23,7 +23,7 @@ import {
 } from "./storage";
 import { basename } from "path";
 import { homedir } from "os";
-import { resolveConfig } from "./config";
+import { resolveConfig, setArchived } from "./config";
 import { launchApp, openConfigFile, trashConfigFile } from "./actions";
 import { parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
@@ -42,9 +42,7 @@ function projectName(config: ResolvedConfig, project: Project): string {
   return config.name || basename(project.path);
 }
 
-export default function ListProjectsCommand(
-  props: LaunchProps<{ launchContext?: LaunchContext }>,
-) {
+export default function ListProjectsCommand(props: LaunchProps<{ launchContext?: LaunchContext }>) {
   const contextId = props.launchContext?.projectId;
   const [listState, setListState] = useState<{
     items: ProjectWithConfig[];
@@ -92,7 +90,9 @@ export default function ListProjectsCommand(
         saveConfigCache(freshCache);
       }
 
-      items.sort((a, b) => projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)));
+      items.sort((a, b) =>
+        projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)),
+      );
 
       if (contextId) {
         const match = items.find((item) => item.project.id === contextId);
@@ -133,7 +133,9 @@ export default function ListProjectsCommand(
     }
     saveConfigCache(newCache);
 
-    resolved.sort((a, b) => projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)));
+    resolved.sort((a, b) =>
+      projectName(a.config, a.project).localeCompare(projectName(b.config, b.project)),
+    );
     setListState((s) => ({ ...s, items: resolved, isLoading: false }));
   }
 
@@ -147,14 +149,23 @@ export default function ListProjectsCommand(
     );
   }
 
-  const allTags = [...new Set(items.map((item) => item.config.meta.tag).filter(Boolean) as string[])].sort();
-  const hasUntagged = items.some((item) => !item.config.meta.tag);
+  const activeItems = items.filter((item) => !item.config.meta.archived);
+  const archivedItems = items.filter((item) => item.config.meta.archived);
+  const hasArchived = archivedItems.length > 0;
 
-  const filteredItems = selectedTag === "all"
-    ? items
-    : selectedTag === "untagged"
-      ? items.filter((item) => !item.config.meta.tag)
-      : items.filter((item) => item.config.meta.tag === selectedTag);
+  const allTags = [
+    ...new Set(activeItems.map((item) => item.config.meta.tag).filter(Boolean) as string[]),
+  ].sort();
+  const hasUntagged = activeItems.some((item) => !item.config.meta.tag);
+
+  const filteredItems =
+    selectedTag === "archived"
+      ? archivedItems
+      : selectedTag === "all"
+        ? activeItems
+        : selectedTag === "untagged"
+          ? activeItems.filter((item) => !item.config.meta.tag)
+          : activeItems.filter((item) => item.config.meta.tag === selectedTag);
 
   const tagged = new Map<string, ProjectWithConfig[]>();
   const untagged: ProjectWithConfig[] = [];
@@ -191,7 +202,10 @@ export default function ListProjectsCommand(
       <List.Item.Detail
         metadata={
           <List.Item.Detail.Metadata>
-            <List.Item.Detail.Metadata.Label title="Path" text={project.path.replace(homedir(), "~")} />
+            <List.Item.Detail.Metadata.Label
+              title="Path"
+              text={project.path.replace(homedir(), "~")}
+            />
             {config.meta.tag && (
               <List.Item.Detail.Metadata.TagList title="Tag">
                 <List.Item.Detail.Metadata.TagList.Item text={config.meta.tag} color={Color.Blue} />
@@ -216,10 +230,18 @@ export default function ListProjectsCommand(
               <>
                 <List.Item.Detail.Metadata.Separator />
                 {config.meta.url && (
-                  <List.Item.Detail.Metadata.Link title="URL" text={config.meta.url} target={config.meta.url} />
+                  <List.Item.Detail.Metadata.Link
+                    title="URL"
+                    text={config.meta.url}
+                    target={config.meta.url}
+                  />
                 )}
                 {config.meta.repoUrl && (
-                  <List.Item.Detail.Metadata.Link title="Repository" text={config.meta.repoUrl} target={config.meta.repoUrl} />
+                  <List.Item.Detail.Metadata.Link
+                    title="Repository"
+                    text={config.meta.repoUrl}
+                    target={config.meta.repoUrl}
+                  />
                 )}
               </>
             )}
@@ -316,9 +338,7 @@ export default function ListProjectsCommand(
                 title="Edit Project"
                 icon={Icon.Pencil}
                 shortcut={{ modifiers: ["cmd"], key: "e" }}
-                onAction={() =>
-                  push(<AddProjectCommand editProject={project} onSaved={refresh} />)
-                }
+                onAction={() => push(<AddProjectCommand editProject={project} onSaved={refresh} />)}
               />
               <Action
                 title="Edit Config File"
@@ -344,13 +364,42 @@ export default function ListProjectsCommand(
                         await refresh();
                         if (newProject) {
                           const newConfig = resolveConfig(newProject);
-                          push(<ProjectActions project={newProject} config={newConfig} onRefresh={refresh} />);
+                          push(
+                            <ProjectActions
+                              project={newProject}
+                              config={newConfig}
+                              onRefresh={refresh}
+                            />,
+                          );
                         }
                       }}
                     />,
                   )
                 }
               />
+              {config.meta.archived ? (
+                <Action
+                  title="Unarchive Project"
+                  icon={Icon.ArrowCounterClockwise}
+                  shortcut={{ modifiers: ["ctrl"], key: "u" }}
+                  onAction={async () => {
+                    setArchived(project.path, false);
+                    await showToast(Toast.Style.Success, `Unarchived ${name}`);
+                    await refresh();
+                  }}
+                />
+              ) : (
+                <Action
+                  title="Archive Project"
+                  icon={Icon.Tray}
+                  shortcut={{ modifiers: ["ctrl"], key: "a" }}
+                  onAction={async () => {
+                    setArchived(project.path, true);
+                    await showToast(Toast.Style.Success, `Archived ${name}`);
+                    await refresh();
+                  }}
+                />
+              )}
               <Action
                 title="Remove Project"
                 icon={{ source: Icon.Trash, tintColor: Color.Red }}
@@ -372,19 +421,14 @@ export default function ListProjectsCommand(
       selectedItemId={selection}
       searchBarPlaceholder="Search projects…"
       searchBarAccessory={
-        allTags.length > 0 ? (
-          <List.Dropdown
-            tooltip="Filter by Tag"
-            value={selectedTag}
-            onChange={setSelectedTag}
-          >
+        allTags.length > 0 || hasArchived ? (
+          <List.Dropdown tooltip="Filter by Tag" value={selectedTag} onChange={setSelectedTag}>
             <List.Dropdown.Item title="All Tags" value="all" />
             {allTags.map((tag) => (
               <List.Dropdown.Item key={tag} title={tag} value={tag} />
             ))}
-            {hasUntagged && (
-              <List.Dropdown.Item title="Untagged" value="untagged" />
-            )}
+            {hasUntagged && <List.Dropdown.Item title="Untagged" value="untagged" />}
+            {hasArchived && <List.Dropdown.Item title="Archived Projects" value="archived" />}
           </List.Dropdown>
         ) : undefined
       }
@@ -400,7 +444,13 @@ export default function ListProjectsCommand(
                     await refresh();
                     if (newProject) {
                       const newConfig = resolveConfig(newProject);
-                      push(<ProjectActions project={newProject} config={newConfig} onRefresh={refresh} />);
+                      push(
+                        <ProjectActions
+                          project={newProject}
+                          config={newConfig}
+                          onRefresh={refresh}
+                        />,
+                      );
                     }
                   }}
                 />,

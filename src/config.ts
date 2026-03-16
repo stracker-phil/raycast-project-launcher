@@ -70,6 +70,28 @@ export function writeConfig(projectPath: string, updates: Partial<ProjectFileCon
   writeFileSync(path, JSON.stringify(merged, null, 2) + "\n", "utf-8");
 }
 
+/**
+ * Toggle the archived flag in a project's config file.
+ */
+export function setArchived(projectPath: string, archived: boolean): void {
+  const existing = readConfig(projectPath);
+  const config: ProjectFileConfig = existing ?? {
+    name: basename(projectPath),
+    meta: { icon: "Folder", color: "Blue" },
+    env: {},
+    apps: ["editor", "terminal"],
+    scripts: [],
+  };
+  config.meta = config.meta ?? {};
+  if (archived) {
+    config.meta.archived = true;
+  } else {
+    delete config.meta.archived;
+  }
+  const path = join(projectPath, CONFIG_FILENAME);
+  writeFileSync(path, JSON.stringify(config, null, 2) + "\n", "utf-8");
+}
+
 // ---------------------------------------------------------------------------
 // Variable substitution
 // ---------------------------------------------------------------------------
@@ -90,7 +112,14 @@ function substituteVars(str: string, projectPath: string, url?: string): string 
 // App shorthand expansion
 // ---------------------------------------------------------------------------
 
-const APP_SHORTHANDS: Set<string> = new Set(["editor", "terminal", "git", "browser", "repoBrowser", "claude"]);
+const APP_SHORTHANDS: Set<string> = new Set([
+  "editor",
+  "terminal",
+  "git",
+  "browser",
+  "repoBrowser",
+  "claude",
+]);
 
 function isAppShorthand(item: AppItem): item is AppShorthand {
   return typeof item === "string" && APP_SHORTHANDS.has(item);
@@ -255,9 +284,18 @@ export function resolveConfig(project: Project): ResolvedConfig {
       url,
       repoUrl,
       notes: fileConfig?.meta?.notes || undefined,
+      archived: fileConfig?.meta?.archived || undefined,
     },
     env,
-    apps: resolveApps(fileConfig?.apps, p, isGitRepo, project.path, url, repoUrl, fileConfig?.meta?.editor),
+    apps: resolveApps(
+      fileConfig?.apps,
+      p,
+      isGitRepo,
+      project.path,
+      url,
+      repoUrl,
+      fileConfig?.meta?.editor,
+    ),
     scripts: resolveScripts(fileConfig?.scripts, project.path, url),
     isGitRepo,
     git: isGitRepo ? resolveGitInfo(project.path) : undefined,
