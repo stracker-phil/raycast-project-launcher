@@ -28,7 +28,10 @@ export async function launchApp(
 
     if (app.app) {
       const target = app.args || project.path;
-      execSync(`open -a "${app.app}" "${target}"`, { timeout: 5000 });
+      // Run via login shell so the launched app inherits full user PATH (e.g. homebrew)
+      execSync(`/bin/zsh -l -c ${shellArg(`open -a ${shellArg(app.app)} ${shellArg(target)}`)}`, {
+        timeout: 5000,
+      });
     } else if (app.command) {
       await openTerminalWithCommand(project, config, app.command);
     } else if (app.url) {
@@ -123,7 +126,7 @@ async function openTerminalWithCommand(
   command: string | undefined,
 ): Promise<void> {
   const envExports = buildEnvExports(config.env);
-  const cdPart = `cdir ${escapeForShell(project.path)}`;
+  const cdPart = `cdir ${shellArg(project.path)}`;
   const fullCommand = command ? `${envExports}${cdPart}; ${command}` : `${envExports}${cdPart}`;
 
   execSync(
@@ -168,12 +171,12 @@ function buildEnvExports(env?: Record<string, string>): string {
   if (!env || Object.keys(env).length === 0) return "";
   return (
     Object.entries(env)
-      .map(([k, v]) => `export ${k}=${escapeForShell(v)}`)
+      .map(([k, v]) => `export ${k}=${shellArg(v)}`)
       .join("; ") + "; "
   );
 }
 
-function escapeForShell(str: string): string {
+function shellArg(str: string): string {
   return `'${str.replace(/'/g, "'\\''")}'`;
 }
 
