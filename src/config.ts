@@ -247,6 +247,9 @@ function resolveApps(
       if (item.command) {
         app.command = substituteVars(item.command, projectPath, url);
       }
+      if (item.url) {
+        app.url = substituteVars(item.url, projectPath, url);
+      }
       resolved.push(app);
     }
   }

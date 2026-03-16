@@ -14,7 +14,7 @@ import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
 import { setArchived, setStarred } from "./config";
 import { launchApp, openConfigFile, runScript } from "./actions";
-import { parseShortcut, renderShortcut } from "./shortcuts";
+import { friendlyCliName, friendlyUrlName, parseShortcut, renderShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 
 interface ProjectActionsProps {
@@ -218,7 +218,14 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         metadata={
           <List.Item.Detail.Metadata>
             <List.Item.Detail.Metadata.Label title="Type" text={detail.type} />
-            {detail.app && <List.Item.Detail.Metadata.Label title="App" text={detail.app} />}
+            {detail.type === "App Launcher" && (
+              <List.Item.Detail.Metadata.Label
+                title="App"
+                text={
+                  detail.app ? friendlyCliName(detail.app) : detail.url ? friendlyUrlName(detail.url) : "Terminal"
+                }
+              />
+            )}
             {detail.args && (
               <List.Item.Detail.Metadata.Label
                 title="Args"

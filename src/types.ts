@@ -39,6 +39,7 @@ export interface AppEntry {
   app?: string;
   args?: string;
   command?: string;
+  url?: string;
   icon?: string;
   color?: string;
   shortcut?: string;

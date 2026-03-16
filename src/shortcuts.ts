@@ -1,4 +1,53 @@
 import { Keyboard } from "@raycast/api";
+import { ResolvedApp } from "./types";
+
+const CLI_APP_NAMES: Record<string, string> = {
+  phpstorm: "PhpStorm",
+  smerge: "Sublime Merge",
+  repo: "Sublime Merge",
+  edit: "Edit",
+};
+
+const URL_PROTOCOL_NAMES: Record<string, string> = {
+  "http:": "Browser",
+  "https:": "Browser",
+  "obsidian:": "Obsidian",
+};
+
+/**
+ * Map a CLI binary string to its human-readable product name.
+ * Falls back to the raw value if no mapping exists.
+ */
+export function friendlyCliName(binary: string): string {
+  const base = binary.trim().split(/\s+/)[0];
+  return CLI_APP_NAMES[base] ?? binary;
+}
+
+/**
+ * Map a URL to a human-readable app name based on its protocol.
+ * Falls back to the raw URL if no mapping exists.
+ */
+export function friendlyUrlName(url: string): string {
+  try {
+    const protocol = new URL(url).protocol;
+    return URL_PROTOCOL_NAMES[protocol] ?? url;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Return a human-readable display name for an app entry.
+ * - Maps known CLI binaries to their product names.
+ * - Maps URL protocols to their app names when no `app` field is set.
+ * - Falls back to "Terminal" for command-only entries.
+ */
+export function friendlyAppName(app: ResolvedApp): string {
+  if (app.app) return friendlyCliName(app.app);
+  if (app.url) return friendlyUrlName(app.url);
+  if (app.command) return "Terminal";
+  return "";
+}
 
 /**
  * Parse a shortcut string like "cmd+t" or "cmd+shift+k" into a Raycast Keyboard.Shortcut.

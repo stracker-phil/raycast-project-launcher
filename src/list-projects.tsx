@@ -27,7 +27,7 @@ import { basename } from "path";
 import { homedir } from "os";
 import { resolveConfig, setArchived, setStarred } from "./config";
 import { launchApp, openConfigFile, runScript, trashConfigFile } from "./actions";
-import { parseShortcut } from "./shortcuts";
+import { friendlyAppName, parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
 import ProjectActions from "./project-actions";
 
@@ -273,7 +273,7 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
                   <List.Item.Detail.Metadata.Label
                     key={app.label}
                     title={`  ${app.label}`}
-                    text={app.app || app.command || app.url || ""}
+                    text={friendlyAppName(app)}
                   />
                 ))}
               </>
