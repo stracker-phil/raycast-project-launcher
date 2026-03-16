@@ -25,6 +25,7 @@ export interface MetaConfig {
   notes?: string;
   editor?: string;
   archived?: boolean;
+  starred?: boolean;
 }
 
 /**
@@ -105,6 +106,7 @@ export interface ResolvedConfig {
     repoUrl?: string;
     notes?: string;
     archived?: boolean;
+    starred?: boolean;
   };
   env?: Record<string, string>;
   apps: ResolvedApp[];

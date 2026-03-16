@@ -23,7 +23,7 @@ import {
 } from "./storage";
 import { basename } from "path";
 import { homedir } from "os";
-import { resolveConfig, setArchived } from "./config";
+import { resolveConfig, setArchived, setStarred } from "./config";
 import { launchApp, openConfigFile, runScript, trashConfigFile } from "./actions";
 import { parseShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
@@ -150,7 +150,9 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
   }
 
   const activeItems = items.filter((item) => !item.config.meta.archived);
+  const starredItems = activeItems.filter((item) => item.config.meta.starred);
   const archivedItems = items.filter((item) => item.config.meta.archived);
+  const hasStarred = starredItems.length > 0;
   const hasArchived = archivedItems.length > 0;
 
   const allTags = [
@@ -159,13 +161,15 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
   const hasUntagged = activeItems.some((item) => !item.config.meta.tag);
 
   const filteredItems =
-    selectedTag === "archived"
-      ? archivedItems
-      : selectedTag === "all"
-        ? activeItems
-        : selectedTag === "untagged"
-          ? activeItems.filter((item) => !item.config.meta.tag)
-          : activeItems.filter((item) => item.config.meta.tag === selectedTag);
+    selectedTag === "starred"
+      ? starredItems
+      : selectedTag === "archived"
+        ? archivedItems
+        : selectedTag === "all"
+          ? activeItems
+          : selectedTag === "untagged"
+            ? activeItems.filter((item) => !item.config.meta.tag)
+            : activeItems.filter((item) => item.config.meta.tag === selectedTag);
 
   const tagged = new Map<string, ProjectWithConfig[]>();
   const untagged: ProjectWithConfig[] = [];
@@ -393,6 +397,29 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
                   )
                 }
               />
+              {config.meta.starred ? (
+                <Action
+                  title="Unstar Project"
+                  icon={Icon.StarDisabled}
+                  shortcut={{ modifiers: ["ctrl"], key: "s" }}
+                  onAction={async () => {
+                    setStarred(project.path, false);
+                    await showToast(Toast.Style.Success, `Unstarred ${name}`);
+                    await refresh();
+                  }}
+                />
+              ) : (
+                <Action
+                  title="Star Project"
+                  icon={Icon.Star}
+                  shortcut={{ modifiers: ["ctrl"], key: "s" }}
+                  onAction={async () => {
+                    setStarred(project.path, true);
+                    await showToast(Toast.Style.Success, `Starred ${name}`);
+                    await refresh();
+                  }}
+                />
+              )}
               {config.meta.archived ? (
                 <Action
                   title="Unarchive Project"
@@ -437,14 +464,15 @@ export default function ListProjectsCommand(props: LaunchProps<{ launchContext?:
       selectedItemId={selection}
       searchBarPlaceholder="Search projects…"
       searchBarAccessory={
-        allTags.length > 0 || hasArchived ? (
+        allTags.length > 0 || hasStarred || hasArchived ? (
           <List.Dropdown tooltip="Filter by Tag" value={selectedTag} onChange={setSelectedTag}>
-            <List.Dropdown.Item title="All Tags" value="all" />
+            <List.Dropdown.Item title="All Projects" value="all" />
+            {hasStarred && <List.Dropdown.Item title="Starred" value="starred" />}
             {allTags.map((tag) => (
               <List.Dropdown.Item key={tag} title={tag} value={tag} />
             ))}
             {hasUntagged && <List.Dropdown.Item title="Untagged" value="untagged" />}
-            {hasArchived && <List.Dropdown.Item title="Archived Projects" value="archived" />}
+            {hasArchived && <List.Dropdown.Item title="Archived" value="archived" />}
           </List.Dropdown>
         ) : undefined
       }

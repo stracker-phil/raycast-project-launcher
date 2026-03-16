@@ -12,7 +12,7 @@ import { execSync } from "child_process";
 import { basename } from "path";
 import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
-import { setArchived } from "./config";
+import { setArchived, setStarred } from "./config";
 import { launchApp, openConfigFile, runScript } from "./actions";
 import { parseShortcut, renderShortcut } from "./shortcuts";
 import AddProjectCommand from "./add-project";
@@ -159,6 +159,25 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       ].join("\n"),
     },
     onAction: () => openConfigFile(project, config),
+  });
+
+  actions.push({
+    id: "toggle-star",
+    title: config.meta.starred ? "Unstar Project" : "Star Project",
+    icon: { source: config.meta.starred ? Icon.StarDisabled : Icon.Star },
+    section: "Manage",
+    shortcut: { modifiers: ["ctrl"], key: "s" },
+    detail: {
+      type: "Manage",
+      shortcutLabel: renderShortcut("ctrl+s"),
+    },
+    onAction: async () => {
+      const newState = !config.meta.starred;
+      setStarred(project.path, newState);
+      await showToast(Toast.Style.Success, `${newState ? "Starred" : "Unstarred"} ${name}`);
+      onRefresh();
+      pop();
+    },
   });
 
   actions.push({

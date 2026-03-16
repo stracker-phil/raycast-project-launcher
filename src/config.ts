@@ -72,6 +72,7 @@ export function writeConfig(projectPath: string, updates: Partial<ProjectFileCon
 
 /**
  * Toggle the archived flag in a project's config file.
+ * Archiving clears the starred flag (mutually exclusive).
  */
 export function setArchived(projectPath: string, archived: boolean): void {
   const existing = readConfig(projectPath);
@@ -85,8 +86,33 @@ export function setArchived(projectPath: string, archived: boolean): void {
   config.meta = config.meta ?? {};
   if (archived) {
     config.meta.archived = true;
+    delete config.meta.starred;
   } else {
     delete config.meta.archived;
+  }
+  const path = join(projectPath, CONFIG_FILENAME);
+  writeFileSync(path, JSON.stringify(config, null, 2) + "\n", "utf-8");
+}
+
+/**
+ * Toggle the starred flag in a project's config file.
+ * Starring clears the archived flag (mutually exclusive).
+ */
+export function setStarred(projectPath: string, starred: boolean): void {
+  const existing = readConfig(projectPath);
+  const config: ProjectFileConfig = existing ?? {
+    name: basename(projectPath),
+    meta: { icon: "Folder", color: "Blue" },
+    env: {},
+    apps: ["editor", "terminal"],
+    scripts: [],
+  };
+  config.meta = config.meta ?? {};
+  if (starred) {
+    config.meta.starred = true;
+    delete config.meta.archived;
+  } else {
+    delete config.meta.starred;
   }
   const path = join(projectPath, CONFIG_FILENAME);
   writeFileSync(path, JSON.stringify(config, null, 2) + "\n", "utf-8");
@@ -285,6 +311,7 @@ export function resolveConfig(project: Project): ResolvedConfig {
       repoUrl,
       notes: fileConfig?.meta?.notes || undefined,
       archived: fileConfig?.meta?.archived || undefined,
+      starred: fileConfig?.meta?.starred || undefined,
     },
     env,
     apps: resolveApps(
