@@ -52,7 +52,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
   // activeStateKeys: value keys for hiddenStates matching (e.g. ["web_on", "xdebug_off"])
   // activeStateDisplay: label pairs for the detail panel (e.g. [{label: "Web service", value: "Running"}])
   const [activeStateKeys, setActiveStateKeys] = useState<string[]>([]);
-  const [activeStateDisplay, setActiveStateDisplay] = useState<{ label: string; value: string }[]>(
+  const [activeStateDisplay, setActiveStateDisplay] = useState<{ label: string; value: string; color?: string }[]>(
     [],
   );
   const [statesLoading, setStatesLoading] = useState(
@@ -144,7 +144,7 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
       const matchedEntry = Object.entries(state.values).find(([, v]) => v.value === rawValue);
       if (matchedEntry) {
         keys.push(matchedEntry[0]);
-        display.push({ label: state.label, value: matchedEntry[1].label });
+        display.push({ label: state.label, value: matchedEntry[1].label, color: matchedEntry[1].color });
       } else {
         // Fallback: no matching value, show raw value
         display.push({ label: state.label, value: rawValue });
@@ -377,9 +377,15 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
             {activeStateDisplay.length > 0 && detail.type !== "Manage" && (
               <>
                 <List.Item.Detail.Metadata.Separator />
-                {activeStateDisplay.map((s) => (
-                  <List.Item.Detail.Metadata.Label key={s.label} title={s.label} text={s.value} />
-                ))}
+                {activeStateDisplay.map((s) =>
+                  s.color ? (
+                    <List.Item.Detail.Metadata.TagList key={s.label} title={s.label}>
+                      <List.Item.Detail.Metadata.TagList.Item text={s.value} color={Color[s.color as keyof typeof Color]} />
+                    </List.Item.Detail.Metadata.TagList>
+                  ) : (
+                    <List.Item.Detail.Metadata.Label key={s.label} title={s.label} text={s.value} />
+                  ),
+                )}
               </>
             )}
           </List.Item.Detail.Metadata>
@@ -481,13 +487,19 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                   {activeStateDisplay.length > 0 && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
-                      {activeStateDisplay.map((s) => (
-                        <List.Item.Detail.Metadata.Label
-                          key={s.label}
-                          title={s.label}
-                          text={s.value}
-                        />
-                      ))}
+                      {activeStateDisplay.map((s) =>
+                        s.color ? (
+                          <List.Item.Detail.Metadata.TagList key={s.label} title={s.label}>
+                            <List.Item.Detail.Metadata.TagList.Item text={s.value} color={Color[s.color as keyof typeof Color]} />
+                          </List.Item.Detail.Metadata.TagList>
+                        ) : (
+                          <List.Item.Detail.Metadata.Label
+                            key={s.label}
+                            title={s.label}
+                            text={s.value}
+                          />
+                        ),
+                      )}
                     </>
                   )}
                 </List.Item.Detail.Metadata>

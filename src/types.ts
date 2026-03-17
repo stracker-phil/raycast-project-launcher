@@ -89,6 +89,7 @@ export type ScriptItem = ScriptEntry;
 export interface StateValueConfig {
   value: string;
   label: string;
+  color?: string;
 }
 
 /**
