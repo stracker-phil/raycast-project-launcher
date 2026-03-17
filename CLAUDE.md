@@ -46,9 +46,10 @@ Architecture Decision Records live in `adr/`. Read relevant ADRs before changing
 - `apps[]` — launchers: `app` field = CLI binary spawned silently in a login shell (full env), `command` field = interactive terminal session, `url` field = opened via Raycast `open()` (supports URL schemes like `obsidian://`)
 - `scripts[]` — background shell commands (execSync, no terminal); support `hiddenStates` for conditional visibility (ADR-023)
 - `stateProviders` — named shell commands that run once per state check; referenced via `"providerName:.json.path"` (JSON extraction) or `"providerName"` (raw text)
-- `states` — structured state definitions: each has `source` (provider ref), `label` (display category), `values` (keyed by stable state key, each with `value` to match and `label` to display)
+- `states` — structured state definitions: each has `source` (provider ref), `label` (display category), `values` (keyed by stable state key, each with `value` to match, `label` to display, and optional `color` for colored tag rendering)
 - Both `apps[]` and `scripts[]` support `hiddenStates` — array of value keys (e.g. `"web_on"`) that hide the item when active
 - App shorthands: `"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"` expand via preferences
+- Preset entries: `{ "preset": "editor", "label": "Open Vault" }` — expands the shorthand then overrides specified props (label, icon, color, shortcut, hiddenStates, etc.)
 - `meta.editor` overrides the global default editor for a specific project
 - Variable substitution: `${dir}` (project path), `${url}` (meta.url), `~` (home dir) in commands, `args`, and `url` fields
 - `apps[]` entries support `args` field to pass a specific file/path to the `app` binary instead of the project directory
