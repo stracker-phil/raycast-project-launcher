@@ -13,6 +13,7 @@ import {
   ResolvedConfig,
   ResolvedScript,
   ScriptItem,
+  StateConfig,
 } from "./types";
 
 export const CONFIG_FILENAME = ".project-launcher.json";
@@ -250,6 +251,9 @@ function resolveApps(
       if (item.url) {
         app.url = substituteVars(item.url, projectPath, url);
       }
+      if (item.hiddenStates) {
+        app.hiddenStates = item.hiddenStates;
+      }
       resolved.push(app);
     }
   }
@@ -269,7 +273,40 @@ function resolveScripts(
     icon: item.icon || "Terminal",
     color: item.color,
     shortcut: item.shortcut,
+    hiddenStates: item.hiddenStates,
   }));
+}
+
+function resolveStateProviders(
+  providers: Record<string, string> | undefined,
+  projectPath: string,
+  url?: string,
+): Record<string, string> | undefined {
+  if (!providers || Object.keys(providers).length === 0) return undefined;
+
+  const resolved: Record<string, string> = {};
+  for (const [name, command] of Object.entries(providers)) {
+    resolved[name] = substituteVars(command, projectPath, url);
+  }
+  return resolved;
+}
+
+function resolveStates(
+  states: Record<string, StateConfig> | undefined,
+  projectPath: string,
+  url?: string,
+): Record<string, StateConfig> | undefined {
+  if (!states || Object.keys(states).length === 0) return undefined;
+
+  const resolved: Record<string, StateConfig> = {};
+  for (const [name, state] of Object.entries(states)) {
+    resolved[name] = {
+      source: substituteVars(state.source, projectPath, url),
+      label: state.label,
+      values: state.values,
+    };
+  }
+  return resolved;
 }
 
 function resolveGitInfo(projectPath: string): { branch: string; dirty: boolean } | undefined {
@@ -327,6 +364,8 @@ export function resolveConfig(project: Project): ResolvedConfig {
       fileConfig?.meta?.editor,
     ),
     scripts: resolveScripts(fileConfig?.scripts, project.path, url),
+    stateProviders: resolveStateProviders(fileConfig?.stateProviders, project.path, url),
+    states: resolveStates(fileConfig?.states, project.path, url),
     isGitRepo,
     git: isGitRepo ? resolveGitInfo(project.path) : undefined,
     hasConfigFile: fileConfig !== null,

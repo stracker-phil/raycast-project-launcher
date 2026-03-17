@@ -43,6 +43,7 @@ export interface AppEntry {
   icon?: string;
   color?: string;
   shortcut?: string;
+  hiddenStates?: string[];
 }
 
 /** Predefined app shorthands that expand using preferences / auto-detection. */
@@ -59,9 +60,27 @@ export interface ScriptEntry {
   icon?: string;
   color?: string;
   shortcut?: string;
+  hiddenStates?: string[];
 }
 
 export type ScriptItem = ScriptEntry;
+
+/**
+ * A single state value entry — maps a raw provider output to a display label.
+ */
+export interface StateValueConfig {
+  value: string;
+  label: string;
+}
+
+/**
+ * A named project state — resolves a provider reference to a set of keyed values.
+ */
+export interface StateConfig {
+  source: string;
+  label: string;
+  values: Record<string, StateValueConfig>;
+}
 
 /**
  * Per-project config read from .project-launcher.json in the project root.
@@ -72,6 +91,8 @@ export interface ProjectFileConfig {
   env?: Record<string, string>;
   apps?: AppItem[];
   scripts?: ScriptItem[];
+  stateProviders?: Record<string, string>;
+  states?: Record<string, StateConfig>;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +108,7 @@ export interface ResolvedApp {
   icon: string;
   color?: string;
   shortcut?: string;
+  hiddenStates?: string[];
 }
 
 export interface ResolvedScript {
@@ -95,6 +117,7 @@ export interface ResolvedScript {
   icon: string;
   color?: string;
   shortcut?: string;
+  hiddenStates?: string[];
 }
 
 export interface ResolvedConfig {
@@ -112,6 +135,8 @@ export interface ResolvedConfig {
   env?: Record<string, string>;
   apps: ResolvedApp[];
   scripts: ResolvedScript[];
+  stateProviders?: Record<string, string>;
+  states?: Record<string, StateConfig>;
   isGitRepo: boolean;
   git?: {
     branch: string;

@@ -9,6 +9,7 @@ import {
   useNavigation,
 } from "@raycast/api";
 import { execSync } from "child_process";
+import { useState, useEffect, useCallback } from "react";
 import { basename } from "path";
 import { homedir } from "os";
 import { Project, ResolvedConfig } from "./types";
@@ -47,11 +48,126 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
   const { push, pop } = useNavigation();
   const name = config.name || basename(project.path);
 
+  // Project-level active states (resolved from stateProviders + states map)
+  // activeStateKeys: value keys for hiddenStates matching (e.g. ["web_on", "xdebug_off"])
+  // activeStateDisplay: label pairs for the detail panel (e.g. [{label: "Web service", value: "Running"}])
+  const [activeStateKeys, setActiveStateKeys] = useState<string[]>([]);
+  const [activeStateDisplay, setActiveStateDisplay] = useState<{ label: string; value: string }[]>(
+    [],
+  );
+  const [statesLoading, setStatesLoading] = useState(
+    () => !!(config.stateProviders && config.states && Object.keys(config.states).length > 0),
+  );
+
+  const stateEnv = useCallback(
+    () => ({
+      ...process.env,
+      PATH: [
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+        process.env.PATH,
+      ].join(":"),
+      ...config.env,
+    }),
+    [config.env],
+  );
+
+  const resolveStates = useCallback(() => {
+    const statesMap = config.states;
+    if (!statesMap || Object.keys(statesMap).length === 0) {
+      setStatesLoading(false);
+      return;
+    }
+
+    const providers = config.stateProviders ?? {};
+    const providerCache: Record<string, { raw: string; json?: unknown }> = {};
+
+    function getProviderOutput(providerName: string): { raw: string; json?: unknown } | undefined {
+      if (providerName in providerCache) return providerCache[providerName];
+      const command = providers[providerName];
+      if (!command) return undefined;
+      try {
+        const raw = execSync(command, {
+          cwd: project.path,
+          encoding: "utf-8",
+          timeout: 5000,
+          env: stateEnv(),
+        }).trim();
+        let json: unknown;
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          /* plain text */
+        }
+        providerCache[providerName] = { raw, json };
+      } catch {
+        providerCache[providerName] = { raw: "" };
+      }
+      return providerCache[providerName];
+    }
+
+    function extractPath(obj: unknown, path: string): string | undefined {
+      const parts = path.split(".").filter(Boolean);
+      let current: unknown = obj;
+      for (const part of parts) {
+        if (current == null || typeof current !== "object") return undefined;
+        current = (current as Record<string, unknown>)[part];
+      }
+      return current == null ? undefined : String(current);
+    }
+
+    const keys: string[] = [];
+    const display: { label: string; value: string }[] = [];
+
+    for (const [, state] of Object.entries(statesMap)) {
+      const source = state.source;
+      const colonIdx = source.indexOf(":");
+      let rawValue: string | undefined;
+
+      if (colonIdx > 0 && source[colonIdx + 1] === ".") {
+        const providerName = source.slice(0, colonIdx);
+        const jsonPath = source.slice(colonIdx + 1);
+        const output = getProviderOutput(providerName);
+        rawValue = output?.json !== undefined ? extractPath(output.json, jsonPath) : undefined;
+      } else if (providers[source]) {
+        const output = getProviderOutput(source);
+        rawValue = output?.raw || undefined;
+      }
+
+      if (rawValue === undefined) continue;
+
+      // Find the matching value entry by raw value
+      const matchedEntry = Object.entries(state.values).find(([, v]) => v.value === rawValue);
+      if (matchedEntry) {
+        keys.push(matchedEntry[0]);
+        display.push({ label: state.label, value: matchedEntry[1].label });
+      } else {
+        // Fallback: no matching value, show raw value
+        display.push({ label: state.label, value: rawValue });
+      }
+    }
+
+    setActiveStateKeys(keys);
+    setActiveStateDisplay(display);
+    setStatesLoading(false);
+  }, [config.states, config.stateProviders, project.path, stateEnv]);
+
+  useEffect(() => {
+    resolveStates();
+  }, [resolveStates]);
+
   const actions: ActionItem[] = [];
 
   const env = config.env;
 
   for (const app of config.apps) {
+    if (!statesLoading && app.hiddenStates) {
+      if (app.hiddenStates.some((hs) => activeStateKeys.includes(hs))) continue;
+    }
     const iconSource = Icon[app.icon as keyof typeof Icon] ?? Icon.AppWindowGrid2x2;
     const iconColor = app.color ? (Color[app.color as keyof typeof Color] ?? undefined) : undefined;
     actions.push({
@@ -72,8 +188,11 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
     });
   }
 
-  // Scripts section
+  // Scripts section — hide scripts whose hiddenStates match active state labels
   for (const script of config.scripts) {
+    if (!statesLoading && script.hiddenStates) {
+      if (script.hiddenStates.some((hs) => activeStateKeys.includes(hs))) continue;
+    }
     const iconSource = Icon[script.icon as keyof typeof Icon] ?? Icon.Terminal;
     const iconColor = script.color
       ? (Color[script.color as keyof typeof Color] ?? Color.Orange)
@@ -89,7 +208,10 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
         command: script.command,
         shortcutLabel: renderShortcut(script.shortcut),
       },
-      onAction: () => runScript(project, config, script.label, script.command),
+      onAction: async () => {
+        await runScript(project, config, script.label, script.command);
+        resolveStates();
+      },
     });
   }
 
@@ -222,7 +344,11 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
               <List.Item.Detail.Metadata.Label
                 title="App"
                 text={
-                  detail.app ? friendlyCliName(detail.app) : detail.url ? friendlyUrlName(detail.url) : "Terminal"
+                  detail.app
+                    ? friendlyCliName(detail.app)
+                    : detail.url
+                      ? friendlyUrlName(detail.url)
+                      : "Terminal"
                 }
               />
             )}
@@ -245,6 +371,14 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                 <List.Item.Detail.Metadata.Label title="Environment" />
                 {Object.entries(env).map(([key, value]) => (
                   <List.Item.Detail.Metadata.Label key={key} title={`  ${key}`} text={value} />
+                ))}
+              </>
+            )}
+            {activeStateDisplay.length > 0 && detail.type !== "Manage" && (
+              <>
+                <List.Item.Detail.Metadata.Separator />
+                {activeStateDisplay.map((s) => (
+                  <List.Item.Detail.Metadata.Label key={s.label} title={s.label} text={s.value} />
                 ))}
               </>
             )}
@@ -286,13 +420,17 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                     </List.Item.Detail.Metadata.TagList>
                   )}
                   {config.meta.notes &&
-                    (Array.isArray(config.meta.notes)
-                      ? config.meta.notes.map((line, i) => (
-                          <List.Item.Detail.Metadata.Label key={i} title={i?"":"Notes"} text={line} />
-                        ))
-                      : <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
-                    )
-                  }
+                    (Array.isArray(config.meta.notes) ? (
+                      config.meta.notes.map((line, i) => (
+                        <List.Item.Detail.Metadata.Label
+                          key={i}
+                          title={i ? "" : "Notes"}
+                          text={line}
+                        />
+                      ))
+                    ) : (
+                      <List.Item.Detail.Metadata.Label title="Notes" text={config.meta.notes} />
+                    ))}
                   {config.isGitRepo && config.git && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
@@ -336,6 +474,18 @@ export default function ProjectActions({ project, config, onRefresh }: ProjectAc
                           key={key}
                           title={`  ${key}`}
                           text={value}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {activeStateDisplay.length > 0 && (
+                    <>
+                      <List.Item.Detail.Metadata.Separator />
+                      {activeStateDisplay.map((s) => (
+                        <List.Item.Detail.Metadata.Label
+                          key={s.label}
+                          title={s.label}
+                          text={s.value}
                         />
                       ))}
                     </>
