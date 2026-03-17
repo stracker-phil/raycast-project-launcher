@@ -30,7 +30,7 @@ Both apps and scripts support per-item `icon`, `color`, and `shortcut` fields.
 
 - `apps` entries are either string shorthands (`"editor"`, `"terminal"`, `"git"`, `"browser"`, `"repoBrowser"`, `"claude"`) or full objects with `label`, `app`/`command`/`url`, `args`, `icon`, `color`, `shortcut`
 - String shorthands expand using extension preferences (e.g. `"editor"` → `{ label: "Edit Code", app: "phpstorm", shortcut: "cmd+o" }`)
-- `scripts` entries are objects with `label`, `command`, `icon`, `color`, `shortcut`
+- `scripts` entries are objects with `label`, `command`, `icon`, `color`, `shortcut`, `state`, `hiddenStates` (see ADR-023 for stateful scripts)
 - Variable substitution: `${dir}` (project path), `${url}` (`meta.url`), and `~` (home directory) are replaced in all `command`, `args`, and `url` fields
 - The UI renders: Apps section → Scripts section → Manage section
 

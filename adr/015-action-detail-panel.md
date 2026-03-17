@@ -16,7 +16,7 @@ Enable `isShowingDetail` on the project-actions List to show a detail panel for 
 
 ## Implementation
 
-Each `ActionItem` carries an `ActionDetail` object with: `type`, `app?`, `args?`, `command?`, `url?`, `shortcutLabel?`, `markdown?`.
+Each `ActionItem` carries an `ActionDetail` object with: `type`, `app?`, `args?`, `command?`, `url?`, `shortcutLabel?`, `markdown?`, `state?`.
 
 The `actionDetail()` function renders:
 - If `markdown` is set: full markdown panel (used for the config reference)
@@ -27,7 +27,7 @@ The `actionDetail()` function renders:
 | Type | Shown for | Preview |
 |------|-----------|---------|
 | App Launcher | All `apps[]` entries | The shell command, URL, or app binary |
-| Background Script | Scripts | The shell command |
+| Background Script | Scripts | The shell command + current state tag (if stateful, see ADR-023) |
 | Manage | Edit Project, Edit Config | No command preview / config reference |
 
 ### App name display
