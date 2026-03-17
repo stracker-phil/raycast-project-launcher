@@ -5,6 +5,7 @@ import { homedir } from "os";
 import { basename, join } from "path";
 import {
   AppItem,
+  AppPresetEntry,
   AppShorthand,
   ExtensionPreferences,
   Project,
@@ -152,6 +153,10 @@ function isAppShorthand(item: AppItem): item is AppShorthand {
   return typeof item === "string" && APP_SHORTHANDS.has(item);
 }
 
+function isAppPresetEntry(item: AppItem): item is AppPresetEntry {
+  return typeof item === "object" && "preset" in item && APP_SHORTHANDS.has(item.preset);
+}
+
 function expandAppShorthand(
   shorthand: AppShorthand,
   p: ExtensionPreferences,
@@ -231,6 +236,21 @@ function resolveApps(
     if (isAppShorthand(item)) {
       const expanded = expandAppShorthand(item, p, isGitRepo, url, repoUrl, metaEditor);
       if (expanded) resolved.push(expanded);
+    } else if (isAppPresetEntry(item)) {
+      // Preset with overrides — expand the shorthand, then apply overrides
+      const expanded = expandAppShorthand(item.preset, p, isGitRepo, url, repoUrl, metaEditor);
+      if (expanded) {
+        if (item.label) expanded.label = item.label;
+        if (item.icon) expanded.icon = item.icon;
+        if (item.color) expanded.color = item.color;
+        if (item.shortcut) expanded.shortcut = item.shortcut;
+        if (item.app) expanded.app = item.app;
+        if (item.args) expanded.args = substituteVars(item.args, projectPath, url);
+        if (item.command) expanded.command = substituteVars(item.command, projectPath, url);
+        if (item.url) expanded.url = substituteVars(item.url, projectPath, url);
+        if (item.hiddenStates) expanded.hiddenStates = item.hiddenStates;
+        resolved.push(expanded);
+      }
     } else {
       // Full app entry object
       const app: ResolvedApp = {

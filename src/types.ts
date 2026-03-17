@@ -48,7 +48,25 @@ export interface AppEntry {
 
 /** Predefined app shorthands that expand using preferences / auto-detection. */
 export type AppShorthand = "editor" | "terminal" | "git" | "browser" | "repoBrowser" | "claude";
-export type AppItem = AppShorthand | AppEntry;
+
+/**
+ * A preset-based app entry — expands a shorthand preset and overrides/extends
+ * with additional props. E.g. { "preset": "editor", "label": "Open Vault" }
+ */
+export interface AppPresetEntry {
+  preset: AppShorthand;
+  label?: string;
+  app?: string;
+  args?: string;
+  command?: string;
+  url?: string;
+  icon?: string;
+  color?: string;
+  shortcut?: string;
+  hiddenStates?: string[];
+}
+
+export type AppItem = AppShorthand | AppEntry | AppPresetEntry;
 
 /**
  * A background script entry — runs via execSync, no visible terminal.
